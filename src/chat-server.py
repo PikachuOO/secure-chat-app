@@ -1,7 +1,7 @@
 import threading, sys, json
 import constants as constants
 from udp import UDP
-from cryptomethods import Cryptographer
+from cryptographer import Cryptographer
 
 udpserver = UDP()
 cryptographer = Cryptographer()
@@ -23,22 +23,25 @@ class ServerKeySet:
     def list_clients(self):
         return self.clientnames
 
+    def remove_client(self, client):
+        self.address_dict.pop(client.address, None)
+        self.clientnames.pop(client.username, None)
+
 class ChatServer:
     def __init__(self):
         self.socket = udpserver.socket
         self.keychain = ServerKeySet()
 
 
-
-
-class LoadServer:
-    def __init__(self):
+class LoadServerDetails:
+    def __init__(self, filename):
         self.serverip = None
         self.serverport = None
         self.live_threads = None
+        self.filename = filename
 
-    def getserverdetails(self, filename):
-        server_file = open(filename)
+    def getserverdetails(self):
+        server_file = open(self.filename)
         try:
             server_cred = json.load(server_file)
             self.serverip = server_cred['server-ip']
@@ -49,16 +52,17 @@ class LoadServer:
 
 
 def run_server():
-    args = sys.argv
     try:
-        if len(args) != 2:
-            server_config = LoadServer()
-            server_config.getserverdetails(constants.SERVER_CONFIG_FILE)
+        server_config = LoadServerDetails(constants.SERVER_CONFIG_FILE)
+        server_config.getserverdetails()
+        chatserver = ChatServer()
+        udpserver.start_udp(chatserver,
+                            server_config.serverip,
+                            server_config.serverport,
+                            server_config.live_threads)
+        print "Server Started and Running...."
     except:
         print "Please start the server properly"
-
-
-
 
 
 if __name__ == "__main__":
