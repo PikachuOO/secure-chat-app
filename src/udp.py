@@ -34,6 +34,13 @@ class UDP:
         receiving_thread.daemon = True
         receiving_thread.start()
 
+    def endpoint(self, message_type):
+        def return_func(f):
+            self.handlers[message_type] = f
+            return f
+
+        return return_func
+
     def send_message(self, condition, lt):
         while True:
             condition.acquire()
@@ -41,9 +48,7 @@ class UDP:
                 condition.wait()
             content = lt.pop()
             condition.release()
-            self.handlers[MessageParser.get_message_type(content[0])](self.obj_of_handlers,
-                                                                      content[0],
-                                                                      content[1])
+            self.handlers[MessageParser.get_message_type(content[0])](self.host, content[0], content[1])
 
     def receive_message(self):
         while True:
