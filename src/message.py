@@ -1,5 +1,6 @@
 import os, struct, time, helper
 import constants as constansts
+from constants import message_type, message_mapping
 from cryptographer import Cryptographer
 
 
@@ -26,3 +27,11 @@ class MessageCryptographer:
         return message
 
 
+class MessageManager:
+
+    @staticmethod
+    def get_message_type(self, message):
+        try:
+            return message_mapping[message[0]]
+        except KeyError:
+            print "Exception"

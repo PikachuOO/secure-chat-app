@@ -106,13 +106,16 @@ class ChatClient:
         self.username = ""
         self.password_hash = ""
         self.m_cryptographer = MessageCryptographer()
+        self.m_manager = MessageManager()
 
     def sign_in(self, user_details):
         username, password = user_details
         if len(username) == 0:
             print "Please enter a valid username"
+            return False
         if len(password) == 0:
             print "Password cannot be empty"
+            return False
         self.username = username
 
         if self.password_thread is not None and self.password_thread.isAlive():
@@ -121,7 +124,7 @@ class ChatClient:
                                               args=(password,))
         self.password_thread.daemon = True
         self.password_thread.start()
-        message = Message(message_type=message_type['SIGN_IN'], payload=(self.username))
+        message = Message(message_type=message_type['SIGN_IN'], payload=(self.username,))
         message = self.m_cryptographer.plain_message(message)
         try:
             message, address = helper.send_recv_msg(self.socket, udpserver, self.server_address, message)

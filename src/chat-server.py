@@ -9,6 +9,7 @@ udpserver = UDP()
 cryptographer = Cryptographer()
 app_status = True
 
+
 class ServerReceiver:
     def __init__(self):
         self.username = None
@@ -40,6 +41,7 @@ class ServerKeySet:
     def remove_client(self, client):
         self.address_dict.pop(client.address, None)
         self.clientnames.pop(client.username, None)
+
 
 class ChatServer:
     def __init__(self):
@@ -83,6 +85,9 @@ class ChatServer:
             if 5 - (time2 - time1) > 0:
                 time.sleep(5 - (time2 - time1))
 
+    def broadcast_logout(self, client):
+        return None
+
 
 class LoadServerDetails:
     def __init__(self, filename):
@@ -112,18 +117,17 @@ class CommandLineServer:
 
 
 def run_server():
-    try:
-        serverip = "127.0.0.1"
-        serverport = 9090
-        app_config = dict()
-        app_config["serverip"] = serverip
-        app_config["serverport"] = serverport
-        app_config["live_threads"] = 5
-        cli_server = CommandLineServer(app_config)
-        print "Server Started and Running...."
-        cli_server.new_server.check_live_clients_thread.join()
-    except:
-        print "Please start the server properly"
+
+    serverip = "127.0.0.1"
+    serverport = 9090
+    app_config = dict()
+    app_config["serverip"] = serverip
+    app_config["serverport"] = serverport
+    app_config["live_threads"] = 5
+    cli_server = CommandLineServer(app_config)
+    print "Server Started and Running...."
+    cli_server.new_server.check_live_clients_thread.join()
+
 
 
 if __name__ == "__main__":
