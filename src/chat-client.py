@@ -1,7 +1,9 @@
 import constants as constants
+from constants import message_type
 from cryptographer import Cryptographer
+from message import *
 from udp import UDP
-import getpass
+import getpass, threading, socket
 
 app_status = True
 udpserver = UDP()
@@ -39,7 +41,7 @@ class ClientKeySet:
         self.clientnames.pop(client.username, None)
 
 
-class CommandLine:
+class CommandLineClient:
     def __init__(self, app_config):
         serverip = app_config["serverip"]
         serverport = app_config["serverport"]
@@ -63,7 +65,7 @@ class CommandLine:
         print "Welcome to chat..\n"
         print "Enter your commnand \n"
         print "1. list\n2. send USER MESSAGE\n3. exit"
-        while app_status:
+        while True:
             user_input = raw_input()
             user_input = user_input.split(" ", 2)
             main_command = user_input[0]
@@ -92,7 +94,6 @@ class CommandLine:
                 print "Please Enter a valid command"
 
 
-
 class ChatClient:
     def __init__(self, server_address):
         self.socket = udpserver.socket
@@ -104,6 +105,35 @@ class ChatClient:
         self.keychain.add_client(client)
         self.username = ""
         self.password_hash = ""
+        self.m_cryptographer = MessageCryptographer()
+
+    def sign_in(self, user_details):
+        username, password = user_details
+        if len(username) == 0:
+            print "Please enter a valid username"
+        if len(password) == 0:
+            print "Password cannot be empty"
+        self.username = username
+
+        if self.password_thread is not None and self.password_thread.isAlive():
+            self.password_thread.join()
+        self.password_thread = threading.Thread(target=self.get_password_hash,
+                                              args=(password,))
+        self.password_thread.daemon = True
+        self.password_thread.start()
+        message = Message(message_type=message_type['SIGN_IN'], payload=(self.username))
+        message = self.m_cryptographer.plain_message(message)
+        try:
+            message, address = helper.send_recv_msg(self.socket, udpserver, self.server_address, message)
+            return True
+        except socket.timeout:
+            print "Timeout, please try again"
+            return False
+
+    def get_password_hash(self, password):
+        self.password_hash = cryptographer.compute_hash_from_client_password(self.password_hash, password)
+
+
 
 
 def run_client():
@@ -116,9 +146,9 @@ def run_client():
     app_config["serverport"] = serverport
     app_config["clientip"] = clientip
     app_config["clientport"] = clientport
-    cli = CommandLine(app_config)
-    # cli.sign_in()
-    cli.options()
+    cli_client = CommandLineClient(app_config)
+    # cli_client.sign_in()
+    cli_client.options()
 
 
 if __name__ == "__main__":

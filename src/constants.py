@@ -4,3 +4,7 @@ SERVER_PRIVATE_KEY = "server_private_key.der"
 
 
 BUFFER_SIZE = 1024
+
+message_type = {
+    "SIGN_IN": 0,
+}
