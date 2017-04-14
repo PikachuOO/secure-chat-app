@@ -36,6 +36,7 @@ class ClientKeyChain:
         self.address_dict.pop(user.address, None)
         self.usernames.pop(user.username, None)
 
+
 class ClientUser:
     def __init__(self):
         self.username = None

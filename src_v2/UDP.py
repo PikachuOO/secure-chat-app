@@ -1,7 +1,7 @@
 import socket
 import threading
 
-from message import MessageParser
+from Message import MessageParser
 
 
 class UDP:

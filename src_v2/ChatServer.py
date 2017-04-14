@@ -75,10 +75,10 @@ class ChatServer:
         while True:
             t1 = time.time()
             d = chr(1) # Default Difficulty
-            expiry_time = long(t1 + constants.PUZZLE_TIMEOUT)
+            expiry_time = long(t1 + 15)
             self.certificate = ""
             self.nc_list = {}
-            time.sleep(constants.PUZZLE_TIMEOUT)
+            time.sleep(15)
 
     @udp.endpoint("Login")
     def got_login_packet(self, msg, addr):
@@ -105,7 +105,7 @@ class ChatServer:
                 self.__send_logout_broadcast(user)
 
             t2 = get_timestamp()
-            sleep_time = constants.HEARTBEAT_PAUSE - (t2 - t1)
+            sleep_time = 30 - (t2 - t1)
             if sleep_time > 0:
                 time.sleep(sleep_time)
 
