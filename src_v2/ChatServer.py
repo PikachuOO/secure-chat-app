@@ -56,28 +56,19 @@ class ChatServer:
     def __init__(self):
         self.socket = udp.socket
         self.keychain = ServerKeyChain()
-
         self.msg_parser = MessageParser()
         self.certificate = None
         self.nc_list = {}
-
-        self.puz_thread = threading.Thread(
-            target=self.__generate_puz_certificate)
+        self.puz_thread = threading.Thread(target=self.generate_puzzle)
         self.puz_thread.daemon = True
         self.puz_thread.start()
-
-        self.check_heartbeat_thread = threading.Thread(
-            target=self.check_heartbeat)
+        self.check_heartbeat_thread = threading.Thread(target=self.check_heartbeat)
         self.check_heartbeat_thread.daemon = True
         self.check_heartbeat_thread.start()
+        self.registered_users = {'ashok': 'ashok', 'parul':'parul'}
 
-    def __generate_puz_certificate(self):
+    def generate_puzzle(self):
         while True:
-            t1 = time.time()
-            d = chr(1) # Default Difficulty
-            expiry_time = long(t1 + 15)
-            self.certificate = ""
-            self.nc_list = {}
             time.sleep(15)
 
     @udp.endpoint("Login")
@@ -102,8 +93,6 @@ class ChatServer:
 
             for user in logged_out:
                 self.keychain.remove_user(user)
-                self.__send_logout_broadcast(user)
-
             t2 = get_timestamp()
             sleep_time = 30 - (t2 - t1)
             if sleep_time > 0:

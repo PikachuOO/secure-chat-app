@@ -1,7 +1,5 @@
-"""This file implements the client side code"""
 import time
 
-# from keychain import ClientKeyChain
 from Message import *
 from UDP import *
 from Helper import send_msg, send_recv_msg
@@ -51,17 +49,14 @@ class ChatClient:
     def __init__(self, saddr):
         self.saddr = saddr
         self.keychain = ClientKeyChain()
-
         user = ClientUser()
         user.username = ""
         user.address = self.saddr
         self.keychain.add_user(user)
         self.socket = udp.socket
         self.msg_parser = MessageParser()
-
         self.username = ""
         self.passhash = ""
-
         self.heartbeat_thread = threading.Thread(target=self.heartbeat)
         self.heartbeat_thread.daemon = True
         self.passwd_thread = None
@@ -100,6 +95,10 @@ class ChatClient:
     @udp.endpoint("test")
     def test(self, msg, addr):
         print "test"
+
+    def list(self):
+
+        return None
 
     def heartbeat(self):
         while True:
