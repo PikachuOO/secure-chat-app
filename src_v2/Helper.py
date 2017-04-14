@@ -12,7 +12,7 @@ def send_msg(sender_socket, dest_addr, msg):
 def send_recv_msg(sender_socket, recv_udp, dest_addr, msg):
     recv_udp.condition.acquire()
     sender_socket.sendto(str(msg), dest_addr)
-    return recv_udp.receive(constants.SOCKET_TIMEOUT)
+    return recv_udp.receive(CN.SOCKET_TIMEOUT)
 
 
 def get_timestamp():
@@ -51,8 +51,8 @@ def verify_challenge_solution(string,n,k):
 
 def is_first_k_zeros(hashed_val,k):
     first_k_bytes = hashed_val[:k]
-    for ch in first_k_bytes:
-        if ord(ch) != 0:
+    for i in first_k_bytes:
+        if ord(i) != 0:
             return False
     return True
 
