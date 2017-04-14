@@ -1,4 +1,10 @@
 import socket
+import constants as constants
+
+from Cryptographer import Cryptographer
+
+cryptographer = Cryptographer()
+
 
 class ServerUser:
     def __init__(self):
@@ -15,8 +21,10 @@ class ServerKeyChain:
         pass
         self.usernames = {}
         self.address_dict = {}
-        self.public_key = None
-        self.private_key = None
+        server_public_key = open(constants.SERVER_PUBLIC_KEY, 'rb')
+        server_private_key = open(constants.SERVER_PRIVATE_KEY, 'rb')
+        self.public_key = cryptographer.load_public_key(server_public_key)
+        self.private_key = cryptographer.load_private_key(server_private_key)
 
 
 class ChatServer:

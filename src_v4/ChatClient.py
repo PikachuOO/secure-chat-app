@@ -1,6 +1,10 @@
 import socket
 import getpass
+import os
+import constants as constants
+from Cryptographer import Cryptographer
 
+cryptographer = Cryptographer()
 
 class ClientUser:
     def __init__(self):
@@ -16,9 +20,9 @@ class ClientKeyChain:
         pass
         self.usernames = {}
         self.address_dict = {}
-        self.public_key = None
-        self.private_key = None
-        self.server_public_key = None
+        self.public_key, self.private_key = cryptographer.create_rsa_pair()
+        server_public_key = open(constants.SERVER_PUBLIC_KEY, 'rb')
+        self.server_public_key = cryptographer.load_public_key(server_public_key)
 
 
 class ChatClient:
