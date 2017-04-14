@@ -42,8 +42,10 @@ returns n: n such that SHA256(R, n) is zero in its first k bits
 '''
 
 
-def solve_puzzle(string,k):
+def solve_puzzle(challenge):
     n=0
+    string=challenge[0]
+    k=challenge[1]
     while 1:
         h = hashes.Hash(hashes.SHA256(), backend=default_backend())
         h.update(string)
