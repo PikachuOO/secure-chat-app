@@ -2,11 +2,11 @@ import time
 
 from Message import *
 from UDP import *
-from Helper import send_msg, send_recv_msg
+from Helper import *
 from constants import message_type
+import exception
 import constants as constants
 from Cryptographer import Cryptographer
-import pickle
 udp = UDP()
 cryptographer = Cryptographer()
 
@@ -56,10 +56,10 @@ class ChatClient:
         self.socket = udp.socket
         self.msg_parser = MessageParser()
         self.username = ""
-        self.passhash = ""
+        self.password_hash = ""
         self.heartbeat_thread = threading.Thread(target=self.heartbeat)
         self.heartbeat_thread.daemon = True
-        self.passwd_thread = None
+        self.pass_thread = None
 
     def login(self, username, password):
         if len(username) == 0:
@@ -71,19 +71,21 @@ class ChatClient:
             return False
 
         self.username = username
-        self.passhash = ""
+        self.password_hash = ""
 
-        # if self.passwd_thread is not None and self.passwd_thread.isAlive():
-        #     self.passwd_thread.join()
-        # self.passwd_thread = threading.Thread(target=self.compute_hash,
-        #                                       args=(password,))
-        # self.passwd_thread.daemon = True
-        # self.passwd_thread.start()
+        if self.pass_thread is not None and self.pass_thread.isAlive():
+            self.pass_thread.join()
+        self.pass_thread = threading.Thread(target=self.compute_hash, args=(password,))
+        self.pass_thread.daemon = True
+        self.pass_thread.start()
 
         try:
-            m = {'type': "Login", "payload": "ashok"}
-            m = pickle.dumps(m)
-            send_msg(self.socket, self.saddr, m)
+            login_msg = Message("Login", self.username)
+            msg, address = send_receive_msg(self.socket, self.saddr, login_msg, udp)
+
+            if msg.payload != "Reject":
+
+                print msg.payload
             return True
         except socket.timeout:
             print "Socket Timed Out, Try Again Later"
@@ -94,7 +96,10 @@ class ChatClient:
 
     @udp.endpoint("test")
     def test(self, msg, addr):
-        print "test"
+        print "testdfdf"
+
+    def compute_hash(self, password):
+        self.password_hash = cryptographer.compute_hash_from_client_password(self.username, password)
 
     def list(self):
 
@@ -110,3 +115,9 @@ class ChatClient:
             #                                        self.keychain.private_key)
             send_msg(self.socket, self.saddr, msg)
             time.sleep(constants.SEND_HEARTBEAT_TIMEOUT)
+
+
+import cli
+
+if __name__ == '__main__':
+    cli.run()

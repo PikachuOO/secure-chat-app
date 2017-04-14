@@ -3,17 +3,35 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives import hashes
 import os,sys,binascii,time
 import constants as CN
+import time
+import pickle
+import constants as constants
+from Message import Message, MessageParser
+
+
+def pickle_message(msg):
+    final_msg = {}
+    final_msg['msg_type'] = msg.msg_type
+    final_msg['payload'] = msg.payload
+    return pickle.dumps(final_msg)
+
+
+def unpicke_message(msg):
+    msg = pickle.loads(msg)
+    return Message(msg_type=msg['msg_type'], payload=msg['payload'])
 
 
 def send_msg(sender_socket, dest_addr, msg):
+    msg = pickle_message(msg)
     sender_socket.sendto(str(msg), dest_addr)
 
 
-def send_recv_msg(sender_socket, recv_udp, dest_addr, msg):
+def send_receive_msg(sender_socket, dest_addr, msg, recv_udp):
     recv_udp.condition.acquire()
+    msg = pickle_message(msg)
     sender_socket.sendto(str(msg), dest_addr)
-    return recv_udp.receive(CN.SOCKET_TIMEOUT)
-
+    reply = recv_udp.receive(10000)
+    return unpicke_message(reply[0]), reply[1]
 
 def get_timestamp():
     return long(time.time())

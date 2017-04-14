@@ -24,9 +24,9 @@ message_type = {
 }
 
 message_dictionary = {
-    0: "Reject",
+    "Reject": "Reject",
     "Login": "Login",
-    "test": "test",
+    "Puzzle": "Puzzle",
     2: "Puzzle",
     3: "Solution",
     4: "Server_DH",

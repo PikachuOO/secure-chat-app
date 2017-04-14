@@ -4,10 +4,10 @@ import time
 
 from Message import *
 from UDP import UDP
-from Helper import send_msg, get_timestamp
+from Helper import *
 from Cryptographer import Cryptographer
 import constants as constants
-
+import exception
 udp = UDP()
 cryptographer = Cryptographer()
 
@@ -46,8 +46,9 @@ class ServerUser:
         self.pass_hash = None
         self.salt = None
         self.public_key = None
-        self.key = None
-        self.addr = None
+        self.aes_key = None
+        self.address = None
+        self.is_logged = None
         self.last_heartbeat_recv = None
         self.last_list_recv = 0
 
@@ -65,22 +66,29 @@ class ChatServer:
         self.check_heartbeat_thread = threading.Thread(target=self.check_heartbeat)
         self.check_heartbeat_thread.daemon = True
         self.check_heartbeat_thread.start()
-        self.registered_users = {'ashok': 'ashok', 'parul':'parul'}
+        self.registered_users = {'ashok': 'ashok', 'parul': 'parul'}
 
     def generate_puzzle(self):
         while True:
             time.sleep(15)
 
     @udp.endpoint("Login")
-    def got_login_packet(self, msg, addr):
-        print "sdsdsdsd"
-        # msg = Message(message_type["Puzzle"],
-        #               payload=self.certificate)
-        # msg = self.converter.nokey_nosign(msg)
-        msg = {'type':"test", 'payload':'palala'}
-        msg = pickle.dumps(msg)
-        send_msg(self.socket, addr, msg)
-
+    def receive_new_login(self, msg, address):
+        msg = unpicke_message(msg)
+        new_username = msg.payload
+        print "received login from", new_username
+        if new_username in self.registered_users:
+            if new_username not in self.keychain.usernames:
+                new_user = ServerUser()
+                new_user.username = new_username
+                new_user.address = address
+                new_user.is_logged = False
+                self.keychain.add_user(new_user)
+            pass
+        else:
+            temp = "You are not registered!"
+            reject_msg = Message(msg_type="Reject", payload=temp)
+            send_msg(self.socket, address, reject_msg)
 
     def check_heartbeat(self):
         while True:
