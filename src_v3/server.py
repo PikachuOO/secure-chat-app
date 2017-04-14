@@ -37,11 +37,9 @@ class Server(object):
         return users[:-1]
 
     def create_socket(self):
-        #Create UDP socket
         try:
             self.sock=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
         except socket.error:
-            print ('Failed to create socket.')
             sys.exit()
 
         try:
@@ -94,19 +92,15 @@ class Server(object):
 
     def initialize(self,argv):
         if len(argv)==0:
-            print 'Hint run as: python server.py -sp <server-port>'
             sys.exit(0)
         try:
             opts,args=getopt.getopt(argv,"s:",["sp="])
         except getopt.GetoptError:
-            print 'Error in reading commandline arguments'
-            print 'Hint run as: python server.py -sp <server-port>'
             sys.exit(0)
         for opt,arg in opts:
             if opt in ('-s','--sp'):
                 self.port=int(arg)
             else:
-                print 'Hint run as: python server.py -sp <server-port>'
                 sys.exit(0)
 
 def main(argv):
