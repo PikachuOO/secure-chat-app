@@ -6,6 +6,12 @@ P_DIFFICULTY=2
 
 BUFFER_SIZE = 1000
 
+# Crypto variables
+RSA_PUBLIC_EXPONENT=65537
+RSA_KEY_SIZE=2048
+HASH_LENGTH=64
+HASH_ITERATIONS=200000
+
 message_type = {
     "Reject": 0,
     "Login": 1,

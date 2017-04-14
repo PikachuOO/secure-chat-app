@@ -2,6 +2,10 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import ciphers, hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives.kdf import pbkdf2
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives import hashes
+import constants as CN
 
 
 class Cryptographer:
@@ -9,8 +13,8 @@ class Cryptographer:
         self.backend = default_backend()
 
     def create_rsa_pair(self):
-        private_key = rsa.generate_private_key(public_exponent=65537,
-                                               key_size=2048,
+        private_key = rsa.generate_private_key(public_exponent=CN.RSA_PUBLIC_EXPONENT,
+                                               key_size=CN.RSA_KEY_SIZE,
                                                backend=self.backend)
         public_key = private_key.public_key()
         return public_key, private_key
@@ -31,9 +35,9 @@ class Cryptographer:
         hasher.update(username)
         salt = hasher.finalize()
         kdf = pbkdf2.PBKDF2HMAC(hashes.SHA512(),
-                                length=64,
+                                length=CN.HASH_LENGTH,
                                 salt=salt,
-                                iterations=200000,
+                                iterations=CN.HASH_ITERATIONS,
                                 backend=self.backend)
         password_hash = kdf.derive(password)
         return password_hash
@@ -45,3 +49,17 @@ class Cryptographer:
                         mgf=padding.MGF1(hashes.SHA512()),
                         salt_length=padding.PSS.MAX_LENGTH), hashes.SHA512())
         return signature
+
+    # get DH public private key pair
+
+
+    def get_dh_pair(self):
+        private_key = ec.generate_private_key(ec.SECP384R1(), default_backend())
+        public_key = private_key.public_key()
+        return private_key, public_key
+
+    # get symmetric key from DH
+
+
+    def get_symmetric_key(self,peer_public_key, private_key):
+        return private_key.exchange(ec.ECDH(), peer_public_key)

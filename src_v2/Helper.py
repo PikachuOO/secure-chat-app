@@ -76,19 +76,7 @@ def is_first_k_zeros(hashed_val,k):
             return False
     return True
 
-# get DH public private key pair
 
-
-def get_dh_pair():
-    private_key = ec.generate_private_key(ec.SECP384R1(), default_backend())
-    public_key = private_key.public_key()
-    return private_key, public_key
-
-# get symmetric key from DH
-
-
-def get_symmetric_key(peer_public_key,private_key):
-    return private_key.exchange(ec.ECDH(), peer_public_key)
 
 # create random challenge string
 
