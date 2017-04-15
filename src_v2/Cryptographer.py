@@ -50,6 +50,16 @@ class Cryptographer:
                         salt_length=padding.PSS.MAX_LENGTH), hashes.SHA512())
         return signature
 
+    def rsa_encryption(self,public_key,message):
+        ciphertext = public_key.encrypt(message,padding.OAEP(mgf = padding.MGF1(algorithm=hashes.SHA1()),
+                                                             algorithm = hashes.SHA1(),label = None))
+        return ciphertext
+
+    def rsa_decryption(self,private_key,ciphertext):
+        plaintext = private_key.decrypt(ciphertext,padding.OAEP(mgf = padding.MGF1(algorithm=hashes.SHA1()),
+                                                                algorithm = hashes.SHA1(),label = None))
+        return plaintext
+
     def get_dh_pair(self):
         private_key = ec.generate_private_key(ec.SECP384R1(), default_backend())
         public_key = private_key.public_key()
