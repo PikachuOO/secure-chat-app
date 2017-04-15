@@ -136,6 +136,7 @@ class ChatServer:
                     user.nonces_used.append(n3)
                     self.keychain.add_user(user)
                     msg, address = send_receive_msg(self.socket, address, resp, udp)
+                    print msg.msg_type
                     print "I am here server"
 
                 else:

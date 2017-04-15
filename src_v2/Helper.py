@@ -11,7 +11,6 @@ from Message import Message, MessageParser
 
 
 def pickle_message(msg):
-    print msg.signature + "hello"
     final_msg = {}
     final_msg['msg_type'] = msg.msg_type
     final_msg['payload'] = msg.payload

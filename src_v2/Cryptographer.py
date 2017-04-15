@@ -16,14 +16,14 @@ class Cryptographer:
         self.backend = default_backend()
 
     def create_rsa_pair(self):
-        try:
-            private_key = rsa.generate_private_key(public_exponent=CN.RSA_PUBLIC_EXPONENT,
-                                               key_size=CN.RSA_KEY_SIZE,
-                                               backend=self.backend)
-            public_key = private_key.public_key()
-            return public_key, private_key
-        except UnsupportedAlgorithm:
-            print CN.exception_messages.get('UnsupportedAlgorithm')
+        # try:
+        private_key = rsa.generate_private_key(public_exponent=CN.RSA_PUBLIC_EXPONENT,
+                                           key_size=CN.RSA_KEY_SIZE,
+                                           backend=self.backend)
+        public_key = private_key.public_key()
+        return public_key, private_key
+        # except UnsupportedAlgorithm:
+        #     print CN.exception_messages.get('UnsupportedAlgorithm')
 
 
     def load_private_key(self, private_key_der):
@@ -73,27 +73,29 @@ class Cryptographer:
 
     def verify_message(self, public_key, message, signature):
         try:
-            public_key.verify(
+            verifier = public_key.verifier(
                 signature,
-                message,
                 padding.PSS(
-                    mgf=padding.MGF1(hashes.SHA512()),
-                    salt_length=padding.PSS.MAX_LENGTH), hashes.SHA512())
+                    mgf=padding.MGF1(hashes.SHA256()),
+                    salt_length=padding.PSS.MAX_LENGTH),
+                hashes.SHA256())
+            verifier.update(message)
+            verifier.verify()
         except:
             print "dsfdfgdg"
 
     def rsa_encryption(self,public_key,message):
-        ciphertext = public_key.encrypt(message,padding.OAEP(mgf = padding.MGF1(algorithm=hashes.SHA512()),
-                                                             algorithm = hashes.SHA512(),label = None))
+        ciphertext = public_key.encrypt(message,padding.OAEP(mgf = padding.MGF1(algorithm=hashes.SHA256()),
+                                                             algorithm = hashes.SHA256(),label = None))
         return ciphertext
 
     def rsa_decryption(self,private_key,ciphertext):
-        plaintext = private_key.decrypt(ciphertext,padding.OAEP(mgf = padding.MGF1(algorithm=hashes.SHA512()),
-                                                                algorithm = hashes.SHA512(),label = None))
+        plaintext = private_key.decrypt(ciphertext,padding.OAEP(mgf = padding.MGF1(algorithm=hashes.SHA256()),
+                                                                algorithm = hashes.SHA256(),label = None))
         return plaintext
 
     def get_dh_pair(self):
-        private_key = ec.generate_private_key(ec.SECP384R1(), default_backend())
+        private_key = ec.generate_private_key(ec.SECP256R1(), default_backend())
         public_key = private_key.public_key()
         return private_key, public_key
 

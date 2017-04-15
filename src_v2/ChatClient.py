@@ -97,7 +97,6 @@ class ChatClient:
                     server_user.address = self.server_address
                     server_user.nonces_used.append(n2)
                     self.keychain.add_user(server_user)
-                    print "Challenge_reeived", challenge_received
                     response = solve_puzzle(challenge_received)
                     print "solution", response
                     dh_public_key = cryptographer.public_key_to_bytes(self.keychain.dh_public_key)
@@ -115,7 +114,8 @@ class ChatClient:
                         nonce_verified = n2 == payload[0]
                         print nonce_verified
                         n3 = payload[1]
-                        if cryptographer.verify_message(self.keychain.server_public_key, msg.payload, payload_sign) and nonce_verified:
+                        cryptographer.verify_message(self.keychain.server_public_key, msg.payload, payload_sign)
+                        if nonce_verified:
                             n4 = os.urandom(16)
                             server_user.nonces_used.append(n4)
                             server_dh = cryptographer.bytes_to_public_key(payload[2])
@@ -126,6 +126,7 @@ class ChatClient:
                             tag, aes_encrypted_payload = cryptographer.symmetric_encryption(server_user.aes_key, iv, payload, ad)
                             iv_ad_en = cryptographer.rsa_encryption(self.keychain.server_public_key, iv+ad+tag)
                             pass_msg = Message(msg_type="Password", iv_tag=iv_ad_en, payload = aes_encrypted_payload)
+                            final_message, address = send_receive_msg(self.socket, address, pass_msg, udp)
                             print "I am here client"
 
                         else:
