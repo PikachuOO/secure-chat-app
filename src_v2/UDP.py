@@ -50,9 +50,10 @@ class UDP:
 
     def receive_message(self):
         while True:
-            content = self.socket.recvfrom(1000)
+            content = self.socket.recvfrom(2**16)
             try:
                 if MessageParser.get_message_type(content[0]) in self.handlers:
+                    print MessageParser.get_message_type(content[0])
                     running_thread = self.running_thread
                     thr, condition, lt = self.threads[running_thread]
                     condition.acquire()

@@ -4,7 +4,7 @@ NONCE_LENGTH=32
 P_DIFFICULTY=2
 
 
-BUFFER_SIZE = 1000
+BUFFER_SIZE = 2**16
 
 # Crypto variables
 RSA_PUBLIC_EXPONENT=65537
@@ -32,11 +32,10 @@ message_type = {
 message_dictionary = {
     "Reject": "Reject",
     "Login": "Login",
-    "Puzzle": "Puzzle",
-    2: "Puzzle",
-    3: "Solution",
-    4: "Server_DH",
-    5: "Password",
+    "Challenge": "Challenge",
+    "Solution": "Solution",
+    "Server_DH": "Server_DH",
+    "Password": "Password",
     6: "Accept",
     7: "List",
     8: "Logout",

@@ -55,7 +55,7 @@ def run():
     try:
         txtint = TextInterface()
         txtint.login()
-        txtint.show_menu()
+        # txtint.show_menu()
     except (socket.error, IOError, exception.SecurityException) as e:
         print str(e)
     sys.exit(0)

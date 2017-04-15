@@ -11,15 +11,18 @@ from Message import Message, MessageParser
 
 
 def pickle_message(msg):
+    print msg.signature + "hello"
     final_msg = {}
     final_msg['msg_type'] = msg.msg_type
     final_msg['payload'] = msg.payload
+    final_msg['signature'] = msg.signature
+    final_msg['iv_tag'] = msg.iv_tag
     return pickle.dumps(final_msg)
 
 
-def unpicke_message(msg):
+def unpickle_message(msg):
     msg = pickle.loads(msg)
-    return Message(msg_type=msg['msg_type'], payload=msg['payload'])
+    return Message(msg_type=msg['msg_type'], payload=msg['payload'], signature=msg['signature'],iv_tag=msg['iv_tag'] )
 
 
 def send_msg(sender_socket, dest_addr, msg):
@@ -31,8 +34,8 @@ def send_receive_msg(sender_socket, dest_addr, msg, recv_udp):
     recv_udp.condition.acquire()
     msg = pickle_message(msg)
     sender_socket.sendto(str(msg), dest_addr)
-    reply = recv_udp.receive(10000)
-    return unpicke_message(reply[0]), reply[1]
+    reply = recv_udp.receive(100000000)
+    return unpickle_message(reply[0]), reply[1]
 
 
 def tuple_from_string(data):

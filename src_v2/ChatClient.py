@@ -19,6 +19,7 @@ class ClientKeyChain:
         self.public_key, self.private_key = cryptographer.create_rsa_pair()
         server_public_key = open(constants.SERVER_PUBLIC_KEY, 'rb')
         self.server_public_key = cryptographer.load_public_key(server_public_key)
+        self.dh_private_key, self.dh_public_key = cryptographer.get_dh_pair()
 
     def get_user_from_address(self, address):
         return self.address_dict[address]
@@ -40,21 +41,23 @@ class ClientUser:
         self.username = None
         self.public_key = None
         self.dh_private_key = None
-        self.key = None
+        self.aes_key = None
         self.address = None
         self.last_recv_msg = 0
+        self.nonces_used = []
 
 
 class ChatClient:
-    def __init__(self, saddr):
-        self.saddr = saddr
+    def __init__(self, server_address):
+        self.server_address = server_address
         self.keychain = ClientKeyChain()
         user = ClientUser()
         user.username = ""
-        user.address = self.saddr
+        user.address = self.server_address
         self.keychain.add_user(user)
         self.socket = udp.socket
         self.msg_parser = MessageParser()
+        self.msg_cryptographer = MessageCryptographer()
         self.username = ""
         self.password_hash = ""
         self.heartbeat_thread = threading.Thread(target=self.heartbeat)
@@ -80,21 +83,58 @@ class ChatClient:
         self.pass_thread.start()
 
         try:
-            login_msg = Message("Login", self.username)
-            msg, address = send_receive_msg(self.socket, self.saddr, login_msg, udp)
+            login_msg = Message("Login", payload=self.username)
+            msg, address = send_receive_msg(self.socket, self.server_address, login_msg, udp)
 
             if msg.payload != "Reject":
+                print "Login Sent"
                 if msg.msg_type == "Challenge":
-                    challenge_received = msg.payload
-                    solution = solve_puzzle(challenge_received)
-                    n1 = os.urandom(16)
-                    p = self.password_hash
-                    my_public_key = cryptographer.public_key_to_bytes(self.keychain.public_key)
-                    payload = (str(solution), n1, p, my_public_key)
-                    solution = Message(msg_type="Solution", )
+                    n1 = msg.payload[2]
+                    challenge_received = (msg.payload[0], msg.payload[1])
+                    n2 = os.urandom(16)
+                    server_user = ClientUser()
+                    server_user.public_key = self.keychain.server_public_key
+                    server_user.address = self.server_address
+                    server_user.nonces_used.append(n2)
+                    self.keychain.add_user(server_user)
+                    print "Challenge_reeived", challenge_received
+                    response = solve_puzzle(challenge_received)
+                    print "solution", response
+                    dh_public_key = cryptographer.public_key_to_bytes(self.keychain.dh_public_key)
+                    payload = (str(response), n1, n2, dh_public_key)
+                    payload = string_from_tuple(payload)
+                    encrypted_payload = self.msg_cryptographer.encrypt_with_public_key(self.keychain.server_public_key, payload)
+                    response_message = Message(msg_type="Solution", payload=encrypted_payload)
+                    msg,address = send_receive_msg(self.socket, self.server_address, response_message, udp)
+                    if msg.msg_type != "Server_DH":
+                        print "Here 111"
+                        pass
+                    else:
+                        payload = tuple_from_string(msg.payload)
+                        payload_sign = msg.signature
+                        nonce_verified = n2 == payload[0]
+                        print nonce_verified
+                        n3 = payload[1]
+                        if cryptographer.verify_message(self.keychain.server_public_key, msg.payload, payload_sign) and nonce_verified:
+                            n4 = os.urandom(16)
+                            server_user.nonces_used.append(n4)
+                            server_dh = cryptographer.bytes_to_public_key(payload[2])
+                            server_user.aes_key = cryptographer.get_symmetric_key(server_dh, self.keychain.dh_private_key)
+                            payload = string_from_tuple((n3, n4, self.password_hash))
+                            iv = os.urandom(16)
+                            ad = os.urandom(16)
+                            tag, aes_encrypted_payload = cryptographer.symmetric_encryption(server_user.aes_key, iv, payload, ad)
+                            iv_ad_en = cryptographer.rsa_encryption(self.keychain.server_public_key, iv+ad+tag)
+                            pass_msg = Message(msg_type="Password", iv_tag=iv_ad_en, payload = aes_encrypted_payload)
+                            print "I am here client"
+
+                        else:
+                            print "Sign not verifeied"
+                            pass
+
 
                 print msg.payload
-            return True
+            return False
         except socket.timeout:
             print "Socket Timed Out, Try Again Later"
             return False
@@ -118,10 +158,10 @@ class ChatClient:
             msg= ''
             # msg = Message(message_type["Heartbeat"], payload=(self.username,
             #                                                   "HEARTBEAT"))
-            usr = self.keychain.get_user_with_addr(self.saddr)
+            usr = self.keychain.get_user_with_addr(self.server_address)
             # msg = self.converter.sym_key_with_sign(msg, usr.key,
             #                                        self.keychain.private_key)
-            send_msg(self.socket, self.saddr, msg)
+            send_msg(self.socket, self.server_address, msg)
             time.sleep(constants.SEND_HEARTBEAT_TIMEOUT)
 
 

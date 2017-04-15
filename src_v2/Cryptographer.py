@@ -6,6 +6,8 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives import hashes
 from cryptography.exceptions import UnsupportedAlgorithm
+from cryptography.hazmat.primitives.ciphers import algorithms
+from cryptography.hazmat.primitives.ciphers import modes
 import constants as CN
 
 
@@ -47,13 +49,38 @@ class Cryptographer:
         password_hash = kdf.derive(password)
         return password_hash
 
+    def compute_hash(self, message):
+        hasher = hashes.Hash(hashes.SHA512(), self.backend)
+        salt = hasher.finalize()
+        kdf = pbkdf2.PBKDF2HMAC(hashes.SHA512(),
+                                length=CN.HASH_LENGTH,
+                                salt=salt,
+                                iterations=CN.HASH_ITERATIONS,
+                                backend=self.backend)
+        message_hash = kdf.derive(message)
+        return message_hash
+
     def sign_message(self, private_key, message):
-        signature = private_key.sign(
-                        message,
-                        padding.PSS(
-                        mgf=padding.MGF1(hashes.SHA512()),
-                        salt_length=padding.PSS.MAX_LENGTH), hashes.SHA512())
+        signer = private_key.signer(
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH
+            ), hashes.SHA256())
+
+        signer.update(message)
+        signature = signer.finalize()
         return signature
+
+    def verify_message(self, public_key, message, signature):
+        try:
+            public_key.verify(
+                signature,
+                message,
+                padding.PSS(
+                    mgf=padding.MGF1(hashes.SHA512()),
+                    salt_length=padding.PSS.MAX_LENGTH), hashes.SHA512())
+        except:
+            print "dsfdfgdg"
 
     def rsa_encryption(self,public_key,message):
         ciphertext = public_key.encrypt(message,padding.OAEP(mgf = padding.MGF1(algorithm=hashes.SHA512()),
@@ -72,7 +99,7 @@ class Cryptographer:
 
     # get symmetric key from DH
 
-    def get_symmetric_key(self,peer_public_key, private_key):
+    def get_symmetric_key(self, peer_public_key, private_key):
         return private_key.exchange(ec.ECDH(), peer_public_key)
 
     def public_key_to_bytes(self, public_key):
@@ -84,3 +111,10 @@ class Cryptographer:
             return serialization.load_der_public_key(bytes, backend=self.backend)
         except ValueError:
             print "Invlaisliasi"
+
+    def symmetric_encryption(self, sym_key, iv, payload, ad):
+        encryptor = ciphers.Cipher(algorithms.AES(sym_key), mode=modes.GCM(iv),
+                                   backend=default_backend()).encryptor()
+        encryptor.authenticate_additional_data(ad)
+        ciphertext = encryptor.update(payload) + encryptor.finalize()
+        return encryptor.tag, ciphertext

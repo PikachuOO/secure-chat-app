@@ -21,6 +21,7 @@ class ServerKeyChain:
         server_private_key = open(constants.SERVER_PRIVATE_KEY, 'rb')
         self.public_key = cryptographer.load_public_key(server_public_key)
         self.private_key = cryptographer.load_private_key(server_private_key)
+        self.dh_private_key, self.dh_public_key = cryptographer.get_dh_pair()
 
     def list_users(self):
         return self.usernames
@@ -50,7 +51,7 @@ class ServerUser:
         self.address = None
         self.is_logged = None
         self.last_heartbeat_recv = None
-        self.last_list_recv = 0
+        self.next_expected = None
         self.challenge_given = None
         self.nonces_used = []
 
@@ -60,8 +61,9 @@ class ChatServer:
         self.socket = udp.socket
         self.keychain = ServerKeyChain()
         self.msg_parser = MessageParser()
+        self.msg_cryptographer = MessageCryptographer()
         self.certificate = None
-        self.used_nonce_list = {}
+        self.used_nonce_list = []
         self.puz_thread = threading.Thread(target=self.generate_puzzle)
         self.puz_thread.daemon = True
         self.puz_thread.start()
@@ -76,25 +78,73 @@ class ChatServer:
 
     @udp.endpoint("Login")
     def receive_new_login(self, msg, address):
-        msg = unpicke_message(msg)
+        msg = unpickle_message(msg)
         new_username = msg.payload
         print "received login from", new_username
         if new_username in self.registered_users:
             if new_username not in self.keychain.usernames:
+                print "111"
                 new_user = ServerUser()
                 new_user.username = new_username
                 new_user.address = address
                 new_user.is_logged = False
-                self.keychain.add_user(new_user)
                 new_user.challenge_given = get_challenge(self.used_nonce_list)
-                challenge_message = Message(msg_type="Challenge", payload=new_user.challenge_given)
+                n1 = os.urandom(16)
+                new_user.nonces_used.append(n1)
+                self.used_nonce_list.append(new_user.challenge_given[0])
+                new_user.next_expected = "Solution"
+                self.keychain.add_user(new_user)
+                final_challenege = new_user.challenge_given + (n1, )
+                challenge_message = Message(msg_type="Challenge", payload=final_challenege)
                 send_msg(self.socket, address, challenge_message)
             else:
-                pass
+                temp = "You are already logged in!!"
+                reject_msg = Message(msg_type="Reject", payload=temp)
+                send_msg(self.socket, address, reject_msg)
         else:
             temp = "You are not registered!"
             reject_msg = Message(msg_type="Reject", payload=temp)
             send_msg(self.socket, address, reject_msg)
+
+    @udp.endpoint("Solution")
+    def receive_solution(self, msg, address):
+        user = self.keychain.get_user_from_address(address)
+        if user is not None:
+            msg = unpickle_message(msg)
+            if user.next_expected == "Solution":
+                print "Inside solution"
+                payload = msg.payload
+                decrypted_payload = self.msg_cryptographer.decrypt_with_private_key(self.keychain.private_key, payload)
+                payload = tuple_from_string(decrypted_payload)
+                received_solution = int(payload[0])
+                match_solution = verify_challenge_solution(user.challenge_given[0], received_solution, user.challenge_given[1])
+                n1 = payload[1]
+                solution_verified = match_solution == received_solution
+                if n1 == user.nonces_used[len(user.nonces_used)-1] and solution_verified:
+                    print "INDIA"
+                    n2 = payload[2]
+                    n3 = os.urandom(16)
+                    client_dh = payload[3]
+                    client_dh = cryptographer.bytes_to_public_key(client_dh)
+                    server_dh = self.keychain.dh_private_key
+                    user.aes_key = cryptographer.get_symmetric_key(client_dh, server_dh)
+                    payload = (n2, n3, cryptographer.public_key_to_bytes(self.keychain.dh_public_key))
+                    payload = string_from_tuple(payload)
+                    payload_sign = cryptographer.sign_message(self.keychain.private_key, payload)
+                    print "44545454"
+                    resp = Message(msg_type="Server_DH", payload=payload, signature=payload_sign)
+                    user.nonces_used.append(n3)
+                    self.keychain.add_user(user)
+                    msg, address = send_receive_msg(self.socket, address, resp, udp)
+                    print "I am here server"
+
+                else:
+                    pass
+
+            else:
+                print "Invalid message received"
+
+
 
     def check_heartbeat(self):
         while True:
