@@ -112,7 +112,6 @@ class ChatServer:
         if user is not None:
             msg = unpickle_message(msg)
             if user.next_expected == "Solution":
-                print "Inside solution"
                 payload = msg.payload
                 decrypted_payload = self.msg_cryptographer.decrypt_with_private_key(self.keychain.private_key, payload)
                 payload = tuple_from_string(decrypted_payload)
@@ -121,7 +120,6 @@ class ChatServer:
                 n1 = payload[1]
                 solution_verified = match_solution == received_solution
                 if n1 == user.nonces_used[len(user.nonces_used)-1] and solution_verified:
-                    print "INDIA"
                     n2 = payload[2]
                     n3 = os.urandom(16)
                     client_dh = payload[3]
@@ -131,7 +129,6 @@ class ChatServer:
                     payload = (n2, n3, cryptographer.public_key_to_bytes(self.keychain.dh_public_key))
                     payload = string_from_tuple(payload)
                     payload_sign = cryptographer.sign_message(self.keychain.private_key, payload)
-                    print "44545454"
                     resp = Message(msg_type="Server_DH", payload=payload, signature=payload_sign)
                     user.nonces_used.append(n3)
                     self.keychain.add_user(user)
@@ -145,24 +142,21 @@ class ChatServer:
                     if pass_hash != self.registered_users[user.username] and nonce_verified:
                         user.public_key = cryptographer.bytes_to_public_key(payload_dec[3])
                         self.keychain.add_user(user)
-                        print "password matched"
+                        print "password matched from", user.username
                         result_msg = self.msg_cryptographer.symmetric_encryption(n4, user.aes_key, user.public_key)
                         result_msg.msg_type = "Accept"
                         send_msg(self.socket, address, result_msg)
                     else:
-                        print "password not matched"
+                        print "password not matched from", user.username
                         self.keychain.remove_user(user)
                         result_msg = Message(msg_type="Reject", payload="Password Did not match")
                         send_msg(self.socket, address, result_msg)
                         pass
-                    print "I am here server"
-
                 else:
                     self.keychain.remove_user(user)
                     pass
-
             else:
-                print "Invalid message received"
+                self.keychain.remove_user(user)
 
 
 

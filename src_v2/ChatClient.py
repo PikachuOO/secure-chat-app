@@ -86,7 +86,7 @@ class ChatClient:
             login_msg = Message("Login", payload=self.username)
             msg, address = send_receive_msg(self.socket, self.server_address, login_msg, udp)
 
-            if msg.payload != "Reject":
+            if msg.msg_type != "Reject":
                 print "Login Sent"
                 if msg.msg_type == "Challenge":
                     n1 = msg.payload[2]
@@ -98,7 +98,6 @@ class ChatClient:
                     server_user.nonces_used.append(n2)
                     self.keychain.add_user(server_user)
                     response = solve_puzzle(challenge_received)
-                    print "solution", response
                     dh_public_key = cryptographer.public_key_to_bytes(self.keychain.dh_public_key)
                     payload = (str(response), n1, n2, dh_public_key)
                     payload = string_from_tuple(payload)
@@ -106,7 +105,6 @@ class ChatClient:
                     response_message = Message(msg_type="Solution", payload=encrypted_payload)
                     msg,address = send_receive_msg(self.socket, self.server_address, response_message, udp)
                     if msg.msg_type != "Server_DH":
-                        print "Here 111"
                         return False
                     else:
                         payload = tuple_from_string(msg.payload)
@@ -125,16 +123,12 @@ class ChatClient:
                             pass_msg.msg_type = "Password"
                             final_message, address = send_receive_msg(self.socket, address, pass_msg, udp)
                             ln = self.msg_cryptographer.symmetric_decryption(final_message, server_user.aes_key, self.keychain.private_key)
-                            if final_message.msg_type == "Accept" and ln == n4:
-
-                                return True
-                            else:
-                                return False
-
+                            return final_message.msg_type == "Accept" and ln == n4
                         else:
-                            print "Sign not verifeied"
+                            print "Sign not verified"
                             return False
             else:
+                print msg.payload
                 return False
         except socket.timeout:
             print "Socket Timed Out, Try Again Later"
