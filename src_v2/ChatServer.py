@@ -51,6 +51,8 @@ class ServerUser:
         self.is_logged = None
         self.last_heartbeat_recv = None
         self.last_list_recv = 0
+        self.challenge_given = None
+        self.nonces_used = []
 
 
 class ChatServer:
@@ -59,7 +61,7 @@ class ChatServer:
         self.keychain = ServerKeyChain()
         self.msg_parser = MessageParser()
         self.certificate = None
-        self.nc_list = {}
+        self.used_nonce_list = {}
         self.puz_thread = threading.Thread(target=self.generate_puzzle)
         self.puz_thread.daemon = True
         self.puz_thread.start()
@@ -84,7 +86,11 @@ class ChatServer:
                 new_user.address = address
                 new_user.is_logged = False
                 self.keychain.add_user(new_user)
-            pass
+                new_user.challenge_given = get_challenge(self.used_nonce_list)
+                challenge_message = Message(msg_type="Challenge", payload=new_user.challenge_given)
+                send_msg(self.socket, address, challenge_message)
+            else:
+                pass
         else:
             temp = "You are not registered!"
             reject_msg = Message(msg_type="Reject", payload=temp)
@@ -93,18 +99,18 @@ class ChatServer:
     def check_heartbeat(self):
         while True:
             logged_out = []
-            t1 = get_timestamp()
-            for user in self.keychain.list_users().itervalues():
-                if user.last_heartbeat_recv is not None and get_timestamp() >= user.last_heartbeat_recv:
-                    logged_out.append(user)
-                    print "Logged out", user.username
-
-            for user in logged_out:
-                self.keychain.remove_user(user)
-            t2 = get_timestamp()
-            sleep_time = 30 - (t2 - t1)
-            if sleep_time > 0:
-                time.sleep(sleep_time)
+            # t1 = get_timestamp()
+            # for user in self.keychain.list_users().itervalues():
+            #     if user.last_heartbeat_recv is not None and get_timestamp() >= user.last_heartbeat_recv:
+            #         logged_out.append(user)
+            #         print "Logged out", user.username
+            #
+            # for user in logged_out:
+            #     self.keychain.remove_user(user)
+            # t2 = get_timestamp()
+            # sleep_time = 30 - (t2 - t1)
+            # if sleep_time > 0:
+            #     time.sleep(sleep_time)
 
 
 def run():

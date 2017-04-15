@@ -50,9 +50,6 @@ class Cryptographer:
                         salt_length=padding.PSS.MAX_LENGTH), hashes.SHA512())
         return signature
 
-    # get DH public private key pair
-
-
     def get_dh_pair(self):
         private_key = ec.generate_private_key(ec.SECP384R1(), default_backend())
         public_key = private_key.public_key()
@@ -60,6 +57,15 @@ class Cryptographer:
 
     # get symmetric key from DH
 
-
     def get_symmetric_key(self,peer_public_key, private_key):
         return private_key.exchange(ec.ECDH(), peer_public_key)
+
+    def public_key_to_bytes(self, public_key):
+        return bytes(public_key.public_bytes(encoding=serialization.Encoding.DER,
+                                             format=serialization.PublicFormat.SubjectPublicKeyInfo))
+
+    def bytes_to_public_key(self, bytes):
+        try:
+            return serialization.load_der_public_key(bytes, backend=self.backend)
+        except ValueError:
+            print "Invlaisliasi"

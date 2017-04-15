@@ -84,6 +84,14 @@ class ChatClient:
             msg, address = send_receive_msg(self.socket, self.saddr, login_msg, udp)
 
             if msg.payload != "Reject":
+                if msg.msg_type == "Challenge":
+                    challenge_received = msg.payload
+                    solution = solve_puzzle(challenge_received)
+                    n1 = os.urandom(16)
+                    p = self.password_hash
+                    my_public_key = cryptographer.public_key_to_bytes(self.keychain.public_key)
+                    payload = (str(solution), n1, p, my_public_key)
+                    solution = Message(msg_type="Solution", )
 
                 print msg.payload
             return True

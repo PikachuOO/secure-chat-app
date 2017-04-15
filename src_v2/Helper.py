@@ -5,6 +5,7 @@ import os,sys,binascii,time
 import constants as CN
 import time
 import pickle
+import struct
 import constants as constants
 from Message import Message, MessageParser
 
@@ -33,8 +34,30 @@ def send_receive_msg(sender_socket, dest_addr, msg, recv_udp):
     reply = recv_udp.receive(10000)
     return unpicke_message(reply[0]), reply[1]
 
-def get_timestamp():
-    return long(time.time())
+
+def tuple_from_string(data):
+    final_tuple = []
+    try:
+        while True:
+            if data == "":
+                break
+            h_len = struct.unpack("!H", data[:2])[0]
+            each = data[2:2 + h_len]
+            final_tuple.append(each)
+            data = data[2 + h_len:]
+        return tuple(final_tuple)
+    except (IndexError, struct.error):
+        print "tuple conversion error"
+
+
+def string_from_tuple(data):
+    final_string = ""
+    for each in data:
+        ln = struct.pack("!H", len(each))
+        final_string += ln
+        final_string += each
+    return final_string
+
 
 '''
 client solves the puzzle
