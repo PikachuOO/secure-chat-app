@@ -5,6 +5,7 @@ from cryptography.hazmat.primitives.kdf import pbkdf2
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives import hashes
+from cryptography.exceptions import UnsupportedAlgorithm
 import constants as CN
 
 
@@ -13,11 +14,15 @@ class Cryptographer:
         self.backend = default_backend()
 
     def create_rsa_pair(self):
-        private_key = rsa.generate_private_key(public_exponent=CN.RSA_PUBLIC_EXPONENT,
+        try:
+            private_key = rsa.generate_private_key(public_exponent=CN.RSA_PUBLIC_EXPONENT,
                                                key_size=CN.RSA_KEY_SIZE,
                                                backend=self.backend)
-        public_key = private_key.public_key()
-        return public_key, private_key
+            public_key = private_key.public_key()
+            return public_key, private_key
+        except UnsupportedAlgorithm:
+            print CN.exception_messages.get('UnsupportedAlgorithm')
+
 
     def load_private_key(self, private_key_der):
         private_key = serialization.load_der_private_key(private_key_der.read(),
@@ -51,13 +56,13 @@ class Cryptographer:
         return signature
 
     def rsa_encryption(self,public_key,message):
-        ciphertext = public_key.encrypt(message,padding.OAEP(mgf = padding.MGF1(algorithm=hashes.SHA1()),
-                                                             algorithm = hashes.SHA1(),label = None))
+        ciphertext = public_key.encrypt(message,padding.OAEP(mgf = padding.MGF1(algorithm=hashes.SHA512()),
+                                                             algorithm = hashes.SHA512(),label = None))
         return ciphertext
 
     def rsa_decryption(self,private_key,ciphertext):
-        plaintext = private_key.decrypt(ciphertext,padding.OAEP(mgf = padding.MGF1(algorithm=hashes.SHA1()),
-                                                                algorithm = hashes.SHA1(),label = None))
+        plaintext = private_key.decrypt(ciphertext,padding.OAEP(mgf = padding.MGF1(algorithm=hashes.SHA512()),
+                                                                algorithm = hashes.SHA512(),label = None))
         return plaintext
 
     def get_dh_pair(self):

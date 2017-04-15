@@ -47,4 +47,8 @@ message_dictionary = {
     13: "Heartbeat"
 }
 
+exception_messages={
+    'UnsupportedAlgorithm':'algorithm, or combination of algorithms is not supported'
+}
+
 
