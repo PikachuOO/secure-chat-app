@@ -124,7 +124,9 @@ class ChatClient:
                             pass_msg = self.msg_cryptographer.symmetric_encryption(payload, server_user.aes_key, self.keychain.server_public_key)
                             pass_msg.msg_type = "Password"
                             final_message, address = send_receive_msg(self.socket, address, pass_msg, udp)
-                            if final_message.msg_type == "Accept":
+                            ln = self.msg_cryptographer.symmetric_decryption(final_message, server_user.aes_key, self.keychain.private_key)
+                            if final_message.msg_type == "Accept" and ln == n4:
+
                                 return True
                             else:
                                 return False

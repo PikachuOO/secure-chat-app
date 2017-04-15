@@ -146,19 +146,19 @@ class ChatServer:
                         user.public_key = cryptographer.bytes_to_public_key(payload_dec[3])
                         self.keychain.add_user(user)
                         print "password matched"
-                        result = n4
                         result_msg = self.msg_cryptographer.symmetric_encryption(n4, user.aes_key, user.public_key)
                         result_msg.msg_type = "Accept"
                         send_msg(self.socket, address, result_msg)
                     else:
                         print "password not matched"
                         self.keychain.remove_user(user)
-                        result_msg = Message(msg_type = "Reject", payload="Password Did not match")
+                        result_msg = Message(msg_type="Reject", payload="Password Did not match")
                         send_msg(self.socket, address, result_msg)
                         pass
                     print "I am here server"
 
                 else:
+                    self.keychain.remove_user(user)
                     pass
 
             else:
