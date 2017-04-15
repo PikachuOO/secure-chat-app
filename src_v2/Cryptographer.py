@@ -116,7 +116,15 @@ class Cryptographer:
 
     def symmetric_encryption(self, sym_key, iv, payload, ad):
         encryptor = ciphers.Cipher(algorithms.AES(sym_key), mode=modes.GCM(iv),
-                                   backend=default_backend()).encryptor()
+                                   backend=self.backend).encryptor()
         encryptor.authenticate_additional_data(ad)
         ciphertext = encryptor.update(payload) + encryptor.finalize()
         return encryptor.tag, ciphertext
+
+    def symmetric_decryption(self, sym_key, iv, payload, tag, ad):
+        decryptor = ciphers.Cipher(algorithms.AES(sym_key),mode= modes.GCM(iv, tag),
+                                backend=self.backend).decryptor()
+
+        decryptor.authenticate_additional_data(ad)
+        plain_text = decryptor.update(payload) + decryptor.finalize()
+        return plain_text

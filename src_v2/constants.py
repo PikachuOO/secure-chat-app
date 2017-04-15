@@ -36,7 +36,7 @@ message_dictionary = {
     "Solution": "Solution",
     "Server_DH": "Server_DH",
     "Password": "Password",
-    6: "Accept",
+    "Accept": "Accept",
     7: "List",
     8: "Logout",
     9: "Sender_Client_DH",

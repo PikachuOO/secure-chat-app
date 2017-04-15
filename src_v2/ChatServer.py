@@ -137,6 +137,25 @@ class ChatServer:
                     self.keychain.add_user(user)
                     msg, address = send_receive_msg(self.socket, address, resp, udp)
                     print msg.msg_type
+                    payload_dec = self.msg_cryptographer.symmetric_decryption(msg, user.aes_key, self.keychain.private_key)
+                    payload_dec = tuple_from_string(payload_dec)
+                    nonce_verified = n3 == payload_dec[0]
+                    n4 = payload_dec[1]
+                    pass_hash = payload_dec[2]
+                    if pass_hash != self.registered_users[user.username] and nonce_verified:
+                        user.public_key = cryptographer.bytes_to_public_key(payload_dec[3])
+                        self.keychain.add_user(user)
+                        print "password matched"
+                        result = n4
+                        result_msg = self.msg_cryptographer.symmetric_encryption(n4, user.aes_key, user.public_key)
+                        result_msg.msg_type = "Accept"
+                        send_msg(self.socket, address, result_msg)
+                    else:
+                        print "password not matched"
+                        self.keychain.remove_user(user)
+                        result_msg = Message(msg_type = "Reject", payload="Password Did not match")
+                        send_msg(self.socket, address, result_msg)
+                        pass
                     print "I am here server"
 
                 else:
