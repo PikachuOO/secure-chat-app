@@ -21,10 +21,16 @@ class ClientKeyChain:
         self.dh_private_key, self.dh_public_key = cryptographer.get_dh_pair()
 
     def get_user_from_address(self, address):
-        return self.address_dict[address]
+        if address in self.address_dict:
+            return self.address_dict[address]
+        else:
+            return None
 
     def get_user_from_username(self, username):
-        return self.usernames[username]
+        if username in self.usernames:
+            return self.usernames[username]
+        else:
+            return None
 
     def add_user(self, user):
         self.address_dict[user.address] = user
@@ -44,7 +50,7 @@ class ClientUser:
         self.address = None
         self.last_recv_msg = 0
         self.nonces_used = []
-        self.is_authenticate = False
+        self.is_authenticated = False
 
 
 class ChatClient:
@@ -162,7 +168,16 @@ class ChatClient:
         except socket.timeout:
             print "Socket timed out, while req list"
 
-    def send(self, recipient_un, message_to_send):
+    def send(self,recipient_un, message_to_send):
+        recp = self.keychain.get_user_from_username(recipient_un)
+        if recp is not None and recp.is_authenticated:
+            enc_msg = self.msg_cryptographer.symmetric_encryption(message_to_send, recp.aes_key, recp.public_key)
+            enc_msg.msg_type = "Message"
+            send_msg(self.socket, recp.address, enc_msg)
+        else:
+            self.send_with_handshake(recipient_un, message_to_send)
+
+    def send_with_handshake(self, recipient_un, message_to_send):
         n1 = os.urandom(16)
         pl = string_from_tuple((recipient_un, n1))
         server = self.keychain.get_user_from_address(self.server_address)
@@ -178,15 +193,116 @@ class ChatClient:
                     print resp_detail[1]
                 else:
                     n1_resp, b_pub_key, b_address, b_token = resp_detail
-                    print "sdfsdf"
+                    b_pub_key = cryptographer.bytes_to_public_key(b_pub_key)
+                    b_address = convert_bytes_to_addr(b_address)
+                    n1 = os.urandom(16)
+                    pl = string_from_tuple((self.username, n1))
+                    msg = self.msg_cryptographer.encrypt_with_public_key(b_pub_key, pl)
+                    hello_msg = Message(msg_type="Hello", payload=msg, iv_tag=b_token)
+                    msg, address = send_receive_msg(self.socket, b_address, hello_msg, udp)
+                    if msg.msg_type == "HelloResponse":
+                        dec_msg = self.msg_cryptographer.decrypt_with_private_key(self.keychain.private_key, msg.payload)
+                        (n1_resp, n2, peer_dh) = tuple_from_string(dec_msg)
+                        if n1 == n1_resp and address == b_address:
+                            peer = ClientUser()
+                            peer.username = recipient_un
+                            peer.address = b_address
+                            peer.public_key = b_pub_key
+                            peer.nonces_used.append(n1)
+                            priv_key_dh_peer, pub_key_dh_peer = cryptographer.get_dh_pair()
+                            pkb = cryptographer.public_key_to_bytes(pub_key_dh_peer)
+                            n3 = os.urandom(16)
+                            pl = string_from_tuple((n2, n3, pkb))
+                            peer.nonces_used.append(n3)
+                            pl = self.msg_cryptographer.encrypt_with_public_key(b_pub_key, pl)
+                            dh_resp = Message(msg_type="PeerDHResponse", payload=pl)
+                            peer_dh = cryptographer.bytes_to_public_key(peer_dh)
+                            peer.aes_key = cryptographer.get_symmetric_key(peer_dh, priv_key_dh_peer)
+                            msg, address = send_receive_msg(self.socket, b_address, dh_resp, udp)
+                            self.keychain.add_user(peer)
+                            if msg.msg_type == "PeerAccept":
+                                n3_resp = self.msg_cryptographer.symmetric_decryption(msg, peer.aes_key, self.keychain.private_key)
+                                if n3_resp == n3:
+                                    peer.is_authenticated = True
+                                    self.keychain.add_user(peer)
+                                    enc_msg = self.msg_cryptographer.symmetric_encryption(message_to_send, peer.aes_key,
+                                                                                          peer.public_key)
+                                    enc_msg.msg_type = "InitialMessage"
+                                    send_msg(self.socket, peer.address, enc_msg)
+                                else:
+                                    self.keychain.remove_user(peer)
+                            else:
+                                print "Invalid Message"
+                        else:
+                            print "Not verdsfsdf"
 
-
-
+                    else:
+                        print "Invalid Message type"
+                        pass
             else:
                 pass
         else:
             print "Invalid sender"
             pass
+
+    @udp.endpoint("Message")
+    def receive_message(self, msg, address, options=""):
+        pass
+
+    @udp.endpoint("Hello")
+    def receive_hello(self, msg, address):
+        server = self.keychain.get_user_from_address(self.server_address)
+        msg = unpickle_message(msg)
+        dec_msg = self.msg_cryptographer.decrypt_with_private_key(self.keychain.private_key, msg.payload)
+        (peer_name, n1) = tuple_from_string(dec_msg)
+        b_token = pickle.loads(msg.iv_tag)
+        # try:
+        b_token = self.msg_cryptographer.symmetric_decryption(b_token, server.aes_key, self.keychain.private_key)
+        print "sdfsdfsdf"
+        (a_public_key, a_address) = tuple_from_string(b_token)
+        a_public_key = cryptographer.bytes_to_public_key(a_public_key)
+        a_address = convert_bytes_to_addr(a_address)
+        if a_address == address:
+            peer = ClientUser()
+            peer.username = peer_name
+            peer.address = address
+            peer.public_key = a_public_key
+            peer.nonces_used.append(n1)
+            self.keychain.add_user(peer)
+            priv_key_dh_peer, pub_key_dh_peer = cryptographer.get_dh_pair()
+            pkb = cryptographer.public_key_to_bytes(pub_key_dh_peer)
+            n2 = os.urandom(16)
+            pl = string_from_tuple((n1, n2, pkb))
+            pl = self.msg_cryptographer.encrypt_with_public_key(a_public_key, pl)
+            hello_resp = Message(msg_type="HelloResponse", payload=pl)
+            msg, address = send_receive_msg(self.socket, peer.address, hello_resp, udp)
+            if msg.msg_type == "PeerDHResponse":
+                dec_msg = self.msg_cryptographer.decrypt_with_private_key(self.keychain.private_key, msg.payload)
+                (n2_resp, n3, peer_dh) = tuple_from_string(dec_msg)
+                peer_dh = cryptographer.bytes_to_public_key(peer_dh)
+                peer.aes_key = cryptographer.get_symmetric_key(peer_dh, priv_key_dh_peer)
+                peer.nonces_used.append(n3)
+                status_msg = self.msg_cryptographer.symmetric_encryption(n3, peer.aes_key, a_public_key)
+                status_msg.msg_type = "PeerAccept"
+                peer.is_authenticated = True
+                self.keychain.add_user(peer)
+                final_msg, address = send_receive_msg(self.socket, a_address, status_msg, udp)
+                if address == peer.address:
+                    dec_f_msg = self.msg_cryptographer.symmetric_decryption(final_msg, peer.aes_key, self.keychain.private_key)
+                    print "<Message from " + peer.username + '>: ' + dec_f_msg
+            else:
+                print "Incalkddsnds"
+
+        else:
+            print "Invlid Hello"
+            pass
+        # except:
+        #     print "Cannot decrypt the server permission token"
+
+    @udp.endpoint("Message")
+    def send_message(self, message, address):
+        pass
+
 
     def heartbeat(self):
         while True:

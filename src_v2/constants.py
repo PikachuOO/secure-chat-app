@@ -41,9 +41,12 @@ message_dictionary = {
     "UserList": "UserList",
     "RequestDetail": "RequestDetail",
     "ResponseDetail": "ResponseDetail",
-    11: "Message",
-    12: "Broadcast",
-    13: "Heartbeat"
+    "Hello": "Hello",
+    "HelloResponse": "HelloResponse",
+    "PeerDHResponse": "PeerDHResponse",
+    "PeerAccept": "PeerAccept",
+    "InitialMessage": "InitialMessage",
+    "Message": "Message"
 }
 
 exception_messages={

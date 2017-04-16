@@ -9,7 +9,7 @@ import exception as exception
 class TextInterface:
     def __init__(self):
         self.client = client.ChatClient(('127.0.0.1', 9090))
-        client.udp.start_udp(self.client, '127.0.0.1', 8890, 1)
+        client.udp.start_udp(self.client, '127.0.0.1', 8430, 1)
 
     def login(self):
         while True:
