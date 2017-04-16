@@ -222,7 +222,7 @@ class ChatServer:
                 pass
 
     def send_broadcast_user_logout(self, user):
-        ip = convert_addr_to_bytes(user.addr)
+        ip = convert_addr_to_bytes(user.address)
         for client in self.keychain.list_users().itervalues():
             if client.aes_key is not None:
                 log = self.msg_cryptographer.symmetric_encryption(ip, client.aes_key, client.public_key)
