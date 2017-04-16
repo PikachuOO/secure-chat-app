@@ -120,6 +120,7 @@ class ChatClient:
                             pass_msg.msg_type = "Password"
                             final_message, address = send_receive_msg(self.socket, address, pass_msg, udp)
                             if final_message.msg_type != "Reject":
+                                self.keychain.add_user(server_user)
                                 ln = self.msg_cryptographer.symmetric_decryption(final_message, server_user.aes_key, self.keychain.private_key)
                                 return final_message.msg_type == "Accept" and ln == n4
                             else:
@@ -137,16 +138,28 @@ class ChatClient:
         except:
             return False
 
-    @udp.endpoint("test")
-    def test(self, msg, addr):
-        print "testdfdf"
 
     def compute_hash(self, password):
         self.password_hash = cryptographer.compute_hash_from_client_password(self.username, password)
 
     def list(self):
-
-        return None
+        try:
+            n1 = os.urandom(16)
+            server = self.keychain.get_user_from_address(self.server_address)
+            payl = self.msg_cryptographer.symmetric_encryption(n1, server.aes_key, server.public_key)
+            payl.msg_type = "List"
+            list_resp, address = send_receive_msg(self.socket, server.address, payl, udp)
+            if address == self.server_address:
+                dec_user_list = self.msg_cryptographer.symmetric_decryption(list_resp, server.aes_key, self.keychain.private_key)
+                user_list, n1_resp = tuple_from_string(dec_user_list)
+                if n1_resp == n1:
+                    return user_list
+                else:
+                    pass
+            else:
+                pass
+        except socket.timeout:
+            print "Socket timed out, while req list"
 
     def heartbeat(self):
         while True:

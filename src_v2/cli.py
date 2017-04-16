@@ -9,7 +9,7 @@ import exception as exception
 class TextInterface:
     def __init__(self):
         self.client = client.ChatClient(('127.0.0.1', 9090))
-        client.udp.start_udp(self.client, '127.0.0.1', 8000, 1)
+        client.udp.start_udp(self.client, '127.0.0.1', 8080, 1)
 
     def login(self):
         while True:
@@ -34,10 +34,7 @@ class TextInterface:
                     print "List Failed"
                     continue
 
-                if len(l) > 0:
-                    print " ".join(l)
-                else:
-                    print "Only you are logged in"
+                print l
             elif userinput[0] == "send":
                 if len(userinput) == 3:
                     self.client.send(userinput[1], userinput[2])

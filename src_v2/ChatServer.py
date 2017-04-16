@@ -158,7 +158,25 @@ class ChatServer:
             else:
                 self.keychain.remove_user(user)
 
-
+    @udp.endpoint("List")
+    def request_list(self, msg, address):
+        msg = unpickle_message(msg)
+        list_requester = self.keychain.get_user_from_address(address)
+        if list_requester is not None:
+            n1 = self.msg_cryptographer.symmetric_decryption(msg, list_requester.aes_key, self.keychain.private_key)
+            if n1 not in list_requester.nonces_used:
+                all_users = []
+                for each in self.keychain.list_users():
+                    all_users.append(each)
+                list_users = (' ').join(all_users)
+                pl = string_from_tuple((list_users, n1))
+                enc_user_list = self.msg_cryptographer.symmetric_encryption(pl, list_requester.aes_key, list_requester.public_key)
+                enc_user_list.msg_type = "UserList"
+                send_msg(self.socket, address, enc_user_list)
+            else:
+                pass
+        else:
+            pass
 
     def check_heartbeat(self):
         while True:
