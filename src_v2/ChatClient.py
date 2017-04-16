@@ -81,12 +81,12 @@ class ChatClient:
 
         self.username = username
         self.password_hash = ""
-
-        if self.pass_thread is not None and self.pass_thread.isAlive():
-            self.pass_thread.join()
-        self.pass_thread = threading.Thread(target=self.compute_hash, args=(password,))
-        self.pass_thread.daemon = True
-        self.pass_thread.start()
+        self.password_hash = cryptographer.compute_hash_from_client_password(self.username, password)
+        # if self.pass_thread is not None and self.pass_thread.isAlive():
+        #     self.pass_thread.join()
+        # self.pass_thread = threading.Thread(target=self.compute_hash, args=(password,))
+        # self.pass_thread.daemon = True
+        # self.pass_thread.start()
 
         try:
             login_msg = Message("Login", payload=self.username)
