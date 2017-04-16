@@ -70,7 +70,7 @@ class ChatServer:
         self.check_heartbeat_thread = threading.Thread(target=self.check_heartbeat)
         self.check_heartbeat_thread.daemon = True
         self.check_heartbeat_thread.start()
-        self.registered_users = {'ashok': 'ashok', 'parul': 'parul'}
+        self.registered_users = load_hasehed_pwd()
 
     def generate_puzzle(self):
         while True:
@@ -139,7 +139,7 @@ class ChatServer:
                     nonce_verified = n3 == payload_dec[0]
                     n4 = payload_dec[1]
                     pass_hash = payload_dec[2]
-                    if pass_hash != self.registered_users[user.username] and nonce_verified:
+                    if pass_hash == self.registered_users[user.username] and nonce_verified:
                         user.public_key = cryptographer.bytes_to_public_key(payload_dec[3])
                         self.keychain.add_user(user)
                         print "password matched from", user.username

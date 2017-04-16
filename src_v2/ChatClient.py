@@ -87,7 +87,6 @@ class ChatClient:
             msg, address = send_receive_msg(self.socket, self.server_address, login_msg, udp)
 
             if msg.msg_type != "Reject":
-                print "Login Sent"
                 if msg.msg_type == "Challenge":
                     n1 = msg.payload[2]
                     challenge_received = (msg.payload[0], msg.payload[1])
@@ -110,7 +109,6 @@ class ChatClient:
                         payload = tuple_from_string(msg.payload)
                         payload_sign = msg.signature
                         nonce_verified = n2 == payload[0]
-                        print nonce_verified
                         n3 = payload[1]
                         cryptographer.verify_message(self.keychain.server_public_key, msg.payload, payload_sign)
                         if nonce_verified:
@@ -122,8 +120,12 @@ class ChatClient:
                             pass_msg = self.msg_cryptographer.symmetric_encryption(payload, server_user.aes_key, self.keychain.server_public_key)
                             pass_msg.msg_type = "Password"
                             final_message, address = send_receive_msg(self.socket, address, pass_msg, udp)
-                            ln = self.msg_cryptographer.symmetric_decryption(final_message, server_user.aes_key, self.keychain.private_key)
-                            return final_message.msg_type == "Accept" and ln == n4
+                            if final_message.msg_type != "Reject":
+                                ln = self.msg_cryptographer.symmetric_decryption(final_message, server_user.aes_key, self.keychain.private_key)
+                                return final_message.msg_type == "Accept" and ln == n4
+                            else:
+                                print "Wrong Password\n"
+                                return False
                         else:
                             print "Sign not verified"
                             return False
