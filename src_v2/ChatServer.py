@@ -168,7 +168,7 @@ class ChatServer:
                 all_users = []
                 for each in self.keychain.list_users():
                     all_users.append(each)
-                list_users = (' ').join(all_users)
+                list_users = ' '.join(all_users)
                 pl = string_from_tuple((list_users, n1))
                 enc_user_list = self.msg_cryptographer.symmetric_encryption(pl, list_requester.aes_key, list_requester.public_key)
                 enc_user_list.msg_type = "UserList"
@@ -177,6 +177,34 @@ class ChatServer:
                 pass
         else:
             pass
+
+    @udp.endpoint("RequestDetail")
+    def request_detail(self, msg, address):
+        msg = unpickle_message(msg)
+        user = self.keychain.get_user_from_address(address)
+        if user is not None:
+            dec_msg = self.msg_cryptographer.symmetric_decryption(msg, user.aes_key, self.keychain.private_key)
+            recipient_un, n1 = tuple_from_string(dec_msg)
+            if recipient_un in self.keychain.list_users():
+                recipient = self.keychain.get_user_from_username(recipient_un)
+                rec_pub_key = cryptographer.public_key_to_bytes(recipient.public_key)
+                recp_address = convert_addr_to_bytes(recipient.address)
+                a_pub_key = cryptographer.public_key_to_bytes(user.public_key)
+                a_address = convert_addr_to_bytes(address)
+                a_details = string_from_tuple((a_pub_key, a_address))
+                b_token = self.msg_cryptographer.symmetric_encryption(a_details, recipient.aes_key, recipient.public_key)
+                b_token = pickle.dumps(b_token)
+                pl = string_from_tuple((n1, rec_pub_key, recp_address, b_token))
+                pl = self.msg_cryptographer.symmetric_encryption(pl, user.aes_key, user.public_key)
+                print "dsfsdfsdfsfsdfsdfsdfsfd"
+                pl.msg_type = "ResponseDetail"
+                send_msg(self.socket, address, pl)
+            else:
+                temp = "No user named " + recipient_un
+                m = string_from_tuple((n1, temp))
+                m = self.msg_cryptographer.symmetric_encryption(m, user.aes_key, user.public_key)
+                m.msg_type = "ResponseDetail"
+                send_msg(self.socket, address, m)
 
     def check_heartbeat(self):
         while True:

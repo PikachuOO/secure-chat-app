@@ -1,7 +1,7 @@
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives import hashes
-import os,sys,binascii,time
+import os,sys,binascii,time, socket
 import constants as CN
 import time
 import pickle,json
@@ -126,6 +126,20 @@ def load_hasehed_pwd():
             user_cred_dict.update({line[0]:line[1]})
     return user_cred_dict
 
+def convert_addr_to_bytes(addr):
+    ip = socket.inet_aton(addr[0])
+    port = struct.pack("!H", addr[1])
+    return ip + port
+
+
+def convert_bytes_to_addr(string):
+    try:
+        ip = string[:4]
+        port = string[4:]
+        return socket.inet_ntoa(ip), struct.unpack("!H", port)[0]
+    except socket.error:
+        print "fdfgdfg"
+
 # read pt_user_cred.json file to hash passwords into user_cred.txt file
 
 
@@ -140,6 +154,7 @@ def create_hased_user_cred():
             hashed=c.compute_hash_from_client_password(bytes(pt_uc["un"]),bytes(pt_uc["pwd"]))
             d=u+"##"+hashed+"\n"
             ucf.write(d)
+
 
 
 

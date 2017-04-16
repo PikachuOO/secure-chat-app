@@ -39,8 +39,8 @@ message_dictionary = {
     "Accept": "Accept",
     "List": "List",
     "UserList": "UserList",
-    9: "Sender_Client_DH",
-    10: "Dest_Client_DH",
+    "RequestDetail": "RequestDetail",
+    "ResponseDetail": "ResponseDetail",
     11: "Message",
     12: "Broadcast",
     13: "Heartbeat"

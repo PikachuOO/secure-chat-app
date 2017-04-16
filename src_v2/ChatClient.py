@@ -44,6 +44,7 @@ class ClientUser:
         self.address = None
         self.last_recv_msg = 0
         self.nonces_used = []
+        self.is_authenticate = False
 
 
 class ChatClient:
@@ -160,6 +161,32 @@ class ChatClient:
                 pass
         except socket.timeout:
             print "Socket timed out, while req list"
+
+    def send(self, recipient_un, message_to_send):
+        n1 = os.urandom(16)
+        pl = string_from_tuple((recipient_un, n1))
+        server = self.keychain.get_user_from_address(self.server_address)
+        req_msg = self.msg_cryptographer.symmetric_encryption(pl, server.aes_key, self.keychain.server_public_key)
+        req_msg.msg_type = "RequestDetail"
+        msg, address = send_receive_msg(self.socket, server.address, req_msg, udp)
+        if address == self.server_address and msg.msg_type == "ResponseDetail":
+            access_token_b = self.msg_cryptographer.symmetric_decryption(msg, server.aes_key, self.keychain.private_key)
+            resp_detail = tuple_from_string(access_token_b)
+            n1_resp = resp_detail[0]
+            if n1_resp == n1:
+                if len(resp_detail) == 2:
+                    print resp_detail[1]
+                else:
+                    n1_resp, b_pub_key, b_address, b_token = resp_detail
+                    print "sdfsdf"
+
+
+
+            else:
+                pass
+        else:
+            print "Invalid sender"
+            pass
 
     def heartbeat(self):
         while True:
