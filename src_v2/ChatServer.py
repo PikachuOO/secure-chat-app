@@ -7,7 +7,7 @@ from UDP import UDP
 from Helper import *
 from Cryptographer import Cryptographer
 import constants as constants
-import exception
+
 udp = UDP()
 cryptographer = Cryptographer()
 
@@ -183,8 +183,8 @@ def run():
         udp.start_udp(server, '127.0.0.1', 9090, 5)
         print "Server Running!!"
         server.check_heartbeat_thread.join()
-    except (exception.SecurityException, IOError) as e:
-        print str(e)
+    except :
+        print "str(e)"
 
 if __name__ == "__main__":
     run()

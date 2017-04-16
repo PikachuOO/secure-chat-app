@@ -4,7 +4,6 @@ from Message import *
 from UDP import *
 from Helper import *
 from constants import message_type
-import exception
 import constants as constants
 from Cryptographer import Cryptographer
 udp = UDP()
@@ -135,8 +134,7 @@ class ChatClient:
         except socket.timeout:
             print "Socket Timed Out, Try Again Later"
             return False
-        except exception.SecurityException as e:
-            print str(e)
+        except:
             return False
 
     @udp.endpoint("test")
