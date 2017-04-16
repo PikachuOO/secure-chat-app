@@ -9,7 +9,7 @@ import exception as exception
 class TextInterface:
     def __init__(self):
         self.client = client.ChatClient(('127.0.0.1', 9090))
-        client.udp.start_udp(self.client, '127.0.0.1', 8434, 1)
+        client.udp.start_udp(self.client, '127.0.0.1', 8432, 1)
 
     def login(self):
         while True:
@@ -41,7 +41,7 @@ class TextInterface:
                 else:
                     print "Give user and message also"
             elif userinput[0] == "quit":
-                self.client.logout()
+                self.client.quit()
                 print ("Quitting the application")
                 break
             else:

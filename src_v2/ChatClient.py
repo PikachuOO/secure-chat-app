@@ -66,7 +66,7 @@ class ChatClient:
         self.msg_cryptographer = MessageCryptographer()
         self.username = ""
         self.password_hash = ""
-        self.heartbeat_thread = threading.Thread(target=self.heartbeat)
+        self.heartbeat_thread = threading.Thread(target=self.generate_heartbeat)
         self.heartbeat_thread.daemon = True
         self.pass_thread = None
 
@@ -127,6 +127,7 @@ class ChatClient:
                             pass_msg.msg_type = "Password"
                             final_message, address = send_receive_msg(self.socket, address, pass_msg, udp)
                             if final_message.msg_type != "Reject":
+                                self.heartbeat_thread.start()
                                 self.keychain.add_user(server_user)
                                 ln = self.msg_cryptographer.symmetric_decryption(final_message, server_user.aes_key, self.keychain.private_key)
                                 return final_message.msg_type == "Accept" and ln == n4
@@ -144,7 +145,6 @@ class ChatClient:
             return False
         except:
             return False
-
 
     def compute_hash(self, password):
         self.password_hash = cryptographer.compute_hash_from_client_password(self.username, password)
@@ -260,59 +260,78 @@ class ChatClient:
         dec_msg = self.msg_cryptographer.decrypt_with_private_key(self.keychain.private_key, msg.payload)
         (peer_name, n1) = tuple_from_string(dec_msg)
         b_token = pickle.loads(msg.iv_tag)
-        # try:
-        b_token = self.msg_cryptographer.symmetric_decryption(b_token, server.aes_key, self.keychain.private_key)
-        (a_public_key, a_address) = tuple_from_string(b_token)
-        a_public_key = cryptographer.bytes_to_public_key(a_public_key)
-        a_address = convert_bytes_to_addr(a_address)
-        if a_address == address:
-            peer = ClientUser()
-            peer.username = peer_name
-            peer.address = address
-            peer.public_key = a_public_key
-            peer.nonces_used.append(n1)
-            self.keychain.add_user(peer)
-            priv_key_dh_peer, pub_key_dh_peer = cryptographer.get_dh_pair()
-            pkb = cryptographer.public_key_to_bytes(pub_key_dh_peer)
-            n2 = os.urandom(16)
-            pl = string_from_tuple((n1, n2, pkb))
-            pl = self.msg_cryptographer.encrypt_with_public_key(a_public_key, pl)
-            hello_resp = Message(msg_type="HelloResponse", payload=pl)
-            msg, address = send_receive_msg(self.socket, peer.address, hello_resp, udp)
-            if msg.msg_type == "PeerDHResponse":
-                dec_msg = self.msg_cryptographer.decrypt_with_private_key(self.keychain.private_key, msg.payload)
-                (n2_resp, n3, peer_dh) = tuple_from_string(dec_msg)
-                peer_dh = cryptographer.bytes_to_public_key(peer_dh)
-                peer.aes_key = cryptographer.get_symmetric_key(peer_dh, priv_key_dh_peer)
-                peer.nonces_used.append(n3)
-                status_msg = self.msg_cryptographer.symmetric_encryption(n3, peer.aes_key, a_public_key)
-                status_msg.msg_type = "PeerAccept"
-                peer.is_authenticated = True
+        try:
+            b_token = self.msg_cryptographer.symmetric_decryption(b_token, server.aes_key, self.keychain.private_key)
+            (a_public_key, a_address) = tuple_from_string(b_token)
+            a_public_key = cryptographer.bytes_to_public_key(a_public_key)
+            a_address = convert_bytes_to_addr(a_address)
+            if a_address == address:
+                peer = ClientUser()
+                peer.username = peer_name
+                peer.address = address
+                peer.public_key = a_public_key
+                peer.nonces_used.append(n1)
                 self.keychain.add_user(peer)
-                final_msg, address = send_receive_msg(self.socket, a_address, status_msg, udp)
-                if address == peer.address:
-                    dec_f_msg = self.msg_cryptographer.symmetric_decryption(final_msg, peer.aes_key, self.keychain.private_key)
-                    print "<Message from " + peer.username + '>: ' + dec_f_msg
+                priv_key_dh_peer, pub_key_dh_peer = cryptographer.get_dh_pair()
+                pkb = cryptographer.public_key_to_bytes(pub_key_dh_peer)
+                n2 = os.urandom(16)
+                pl = string_from_tuple((n1, n2, pkb))
+                pl = self.msg_cryptographer.encrypt_with_public_key(a_public_key, pl)
+                hello_resp = Message(msg_type="HelloResponse", payload=pl)
+                msg, address = send_receive_msg(self.socket, peer.address, hello_resp, udp)
+                if msg.msg_type == "PeerDHResponse":
+                    dec_msg = self.msg_cryptographer.decrypt_with_private_key(self.keychain.private_key, msg.payload)
+                    (n2_resp, n3, peer_dh) = tuple_from_string(dec_msg)
+                    peer_dh = cryptographer.bytes_to_public_key(peer_dh)
+                    peer.aes_key = cryptographer.get_symmetric_key(peer_dh, priv_key_dh_peer)
+                    peer.nonces_used.append(n3)
+                    status_msg = self.msg_cryptographer.symmetric_encryption(n3, peer.aes_key, a_public_key)
+                    status_msg.msg_type = "PeerAccept"
+                    peer.is_authenticated = True
+                    self.keychain.add_user(peer)
+                    final_msg, address = send_receive_msg(self.socket, a_address, status_msg, udp)
+                    if address == peer.address:
+                        dec_f_msg = self.msg_cryptographer.symmetric_decryption(final_msg, peer.aes_key, self.keychain.private_key)
+                        print "<Message from " + peer.username + '>: ' + dec_f_msg
+                else:
+                    print "Incalkddsnds"
+
             else:
-                print "Incalkddsnds"
+                print "Invlid Hello"
+                pass
+        except:
+            print "Cannot decrypt the server permission token"
+
+    def quit(self):
+        server = self.keychain.get_user_from_address(self.server_address)
+        logout_msg = self.msg_cryptographer.symmetric_encryption(self.username, server.aes_key, server.public_key)
+        logout_msg.msg_type = "Quit"
+        logout_resp, address = send_receive_msg(self.socket, server.address, logout_msg, udp)
+        dec_msg = self.msg_cryptographer.symmetric_decryption(logout_resp, server.aes_key, self.keychain.private_key)
+        return logout_resp.msg_type == "LogoutResp" and dec_msg == self.username
+
+
+    @udp.endpoint("Logout")
+    def receive_logout_broadcast(self, msg, address):
+        server = self.keychain.get_user_from_address(address)
+        msg = unpickle_message(msg)
+        if address == self.server_address:
+            dec_msg = self.msg_cryptographer.symmetric_decryption(msg, server.aes_key, self.keychain.private_key)
+            add = convert_bytes_to_addr(dec_msg)
+            u = self.keychain.get_user_from_address(add)
+            if u is not None:
+                self.keychain.remove_user(u)
 
         else:
-            print "Invlid Hello"
-            pass
-        # except:
-        #     print "Cannot decrypt the server permission token"
+            print "Invalid Sender"
 
-
-    def heartbeat(self):
+    def generate_heartbeat(self):
         while True:
-            msg= ''
-            # msg = Message(message_type["Heartbeat"], payload=(self.username,
-            #                                                   "HEARTBEAT"))
-            usr = self.keychain.get_user_with_addr(self.server_address)
-            # msg = self.converter.sym_key_with_sign(msg, usr.key,
-            #                                        self.keychain.private_key)
-            send_msg(self.socket, self.server_address, msg)
-            time.sleep(constants.SEND_HEARTBEAT_TIMEOUT)
+            server = self.keychain.get_user_from_address(self.server_address)
+            ht_msg = self.msg_cryptographer.symmetric_encryption(self.username, server.aes_key, self.keychain.server_public_key)
+            ht_msg.msg_type = "HeartBeat"
+            send_msg(self.socket, self.server_address, ht_msg)
+            time.sleep(10)
 
 
 import cli

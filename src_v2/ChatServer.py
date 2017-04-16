@@ -83,7 +83,6 @@ class ChatServer:
         print "received login from", new_username
         if new_username in self.registered_users:
             if new_username not in self.keychain.usernames:
-                print "111"
                 new_user = ServerUser()
                 new_user.username = new_username
                 new_user.address = address
@@ -195,7 +194,6 @@ class ChatServer:
                 b_token = pickle.dumps(b_token)
                 pl = string_from_tuple((n1, rec_pub_key, recp_address, b_token))
                 pl = self.msg_cryptographer.symmetric_encryption(pl, user.aes_key, user.public_key)
-                print "dsfsdfsdfsfsdfsdfsdfsfd"
                 pl.msg_type = "ResponseDetail"
                 send_msg(self.socket, address, pl)
             else:
@@ -204,6 +202,32 @@ class ChatServer:
                 m = self.msg_cryptographer.symmetric_encryption(m, user.aes_key, user.public_key)
                 m.msg_type = "ResponseDetail"
                 send_msg(self.socket, address, m)
+
+    @udp.endpoint("Quit")
+    def receive_quit(self, msg, address):
+        msg = unpickle_message(msg)
+        user = self.keychain.get_user_from_address(address)
+        if user is None or user.public_key is None:
+            print "Invalid user"
+        else:
+            dec_msg = self.msg_cryptographer.symmetric_decryption(msg, user.aes_key, self.keychain.private_key)
+            if dec_msg == user.username:
+                logout_resp = self.msg_cryptographer.symmetric_encryption(user.username, user.aes_key, user.public_key)
+                logout_resp.msg_type = "LogoutResp"
+                send_msg(self.socket, user.address, logout_resp)
+                self.keychain.remove_user(user)
+                self.send_broadcast_user_logout(user)
+            else:
+                print "Invalid Logout req"
+                pass
+
+    def send_broadcast_user_logout(self, user):
+        ip = convert_addr_to_bytes(user.addr)
+        for client in self.keychain.list_users().itervalues():
+            if client.aes_key is not None:
+                log = self.msg_cryptographer.symmetric_encryption(ip, client.aes_key, client.public_key)
+                log.msg_type = "Logout"
+                send_msg(self.socket, client.address, log)
 
     def check_heartbeat(self):
         while True:

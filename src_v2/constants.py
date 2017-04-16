@@ -46,7 +46,11 @@ message_dictionary = {
     "PeerDHResponse": "PeerDHResponse",
     "PeerAccept": "PeerAccept",
     "InitialMessage": "InitialMessage",
-    "Message": "Message"
+    "Message": "Message",
+    "HeartBeat": "HeartBeat",
+    "Quit": "Quit",
+    "Logout":"Logout",
+    "LogoutResp": "LogoutResp"
 }
 
 exception_messages={
