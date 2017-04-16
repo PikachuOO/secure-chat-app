@@ -4,10 +4,12 @@ from cryptography.hazmat.primitives import hashes
 import os,sys,binascii,time
 import constants as CN
 import time
-import pickle
+import pickle,json
 import struct
 import constants as constants
 from Message import Message, MessageParser
+from Cryptographer import Cryptographer as crypt
+
 
 
 def pickle_message(msg):
@@ -111,3 +113,43 @@ def get_challenge(los):
     while c_str in los:
         c_str = os.urandom(CN.NONCE_LENGTH)
     return c_str, ord(chr(CN.P_DIFFICULTY))
+
+# loads all the hashed password into the server at server startup from .json file
+
+
+def load_hasehed_pwd():
+    user_cred_dict={}
+    with open(CN.USER_CRED_FILE,'rb') as ucf:
+        for uc in ucf:
+            uc= uc.rstrip('\n')
+            line=uc.split('##')
+            user_cred_dict.update({line[0]:line[1]})
+    return user_cred_dict
+
+# read pt_user_cred.json file to hash passwords into user_cred.txt file
+
+
+def create_hased_user_cred():
+    c=crypt()
+
+    pt_user_cred_fn=open(CN.PT_USER_CRED_FILE)
+    pt_user_cred=json.load(pt_user_cred_fn)
+    with open(CN.USER_CRED_FILE,'wb') as ucf:
+        for pt_uc in pt_user_cred:
+            u=pt_uc["un"].encode('utf-8').strip()
+            hashed=c.compute_hash_from_client_password(bytes(pt_uc["un"]),bytes(pt_uc["pwd"]))
+            d=u+"##"+hashed+"\n"
+            ucf.write(d)
+
+
+
+# create_hased_user_cred()
+# dict= load_hasehed_pwd()
+# c=crypt()
+# parul_pwd=c.compute_hash_from_client_password('parul','53@Parul!')
+# parul_pwd=bytes(parul_pwd)
+# parul_dic_pwd=dict.get('parul')
+# print parul_pwd==parul_dic_pwd
+
+
+

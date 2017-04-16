@@ -36,7 +36,7 @@ message_dictionary = {
     "Solution": "Solution",
     "Server_DH": "Server_DH",
     "Password": "Password",
-    "Accept": "Accept",
+    6: "Accept",
     7: "List",
     8: "Logout",
     9: "Sender_Client_DH",
@@ -51,3 +51,6 @@ exception_messages={
 }
 
 
+# File names
+USER_CRED_FILE='user_cred.txt'
+PT_USER_CRED_FILE='pt_user_cred.json'
