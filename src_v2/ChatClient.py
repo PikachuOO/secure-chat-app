@@ -247,7 +247,11 @@ class ChatClient:
 
     @udp.endpoint("Message")
     def receive_message(self, msg, address, options=""):
-        pass
+        msg = unpickle_message(msg)
+        sender = self.keychain.get_user_from_address(address)
+        if sender is not None and sender.is_authenticated:
+            dec_msg = self.msg_cryptographer.symmetric_decryption(msg, sender.aes_key, self.keychain.private_key)
+            print "<Message from " + sender.username + '>: ' + dec_msg
 
     @udp.endpoint("Hello")
     def receive_hello(self, msg, address):
@@ -258,7 +262,6 @@ class ChatClient:
         b_token = pickle.loads(msg.iv_tag)
         # try:
         b_token = self.msg_cryptographer.symmetric_decryption(b_token, server.aes_key, self.keychain.private_key)
-        print "sdfsdfsdf"
         (a_public_key, a_address) = tuple_from_string(b_token)
         a_public_key = cryptographer.bytes_to_public_key(a_public_key)
         a_address = convert_bytes_to_addr(a_address)
@@ -298,10 +301,6 @@ class ChatClient:
             pass
         # except:
         #     print "Cannot decrypt the server permission token"
-
-    @udp.endpoint("Message")
-    def send_message(self, message, address):
-        pass
 
 
     def heartbeat(self):
