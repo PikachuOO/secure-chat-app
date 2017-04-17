@@ -169,13 +169,16 @@ class ChatClient:
             print "Socket timed out, while req list"
 
     def send(self,recipient_un, message_to_send):
-        recp = self.keychain.get_user_from_username(recipient_un)
-        if recp is not None and recp.is_authenticated:
-            enc_msg = self.msg_cryptographer.symmetric_encryption(message_to_send, recp.aes_key, recp.public_key)
-            enc_msg.msg_type = "Message"
-            send_msg(self.socket, recp.address, enc_msg)
+        if recipient_un == self.username:
+            print "Cannot send a message to yourself"
         else:
-            self.send_with_handshake(recipient_un, message_to_send)
+            recp = self.keychain.get_user_from_username(recipient_un)
+            if recp is not None and recp.is_authenticated:
+                enc_msg = self.msg_cryptographer.symmetric_encryption(message_to_send, recp.aes_key, recp.public_key)
+                enc_msg.msg_type = "Message"
+                send_msg(self.socket, recp.address, enc_msg)
+            else:
+                self.send_with_handshake(recipient_un, message_to_send)
 
     def send_with_handshake(self, recipient_un, message_to_send):
         n1 = os.urandom(16)
