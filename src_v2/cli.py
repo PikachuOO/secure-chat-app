@@ -1,15 +1,17 @@
 import getpass
 import socket
 import sys
+import Helper as h
 
 import ChatClient as client
-import exception as exception
+#import exception as exception
 
 
 class TextInterface:
-    def __init__(self):
-        self.client = client.ChatClient(('127.0.0.1', 9090))
-        client.udp.start_udp(self.client, '127.0.0.1', 8434, 1)
+    def __init__(self,client_port):
+        self.client = client.ChatClient(('', h.get_server_port()))
+        print client_port
+        client.udp.start_udp(self.client, '', client_port, 1)
 
     def login(self):
         while True:
@@ -48,12 +50,12 @@ class TextInterface:
                 print ("Enter correct command")
 
 
-def run():
+def run(client_port):
     try:
-        txtint = TextInterface()
+        txtint = TextInterface(client_port)
         txtint.login()
         txtint.show_menu()
-    except (socket.error, IOError, exception.SecurityException) as e:
+    except (socket.error, IOError) as e:
         print str(e)
     sys.exit(0)
 

@@ -4,6 +4,7 @@ NONCE_LENGTH=32
 P_DIFFICULTY=2
 
 
+
 BUFFER_SIZE = 2**16
 
 # Crypto variables
@@ -61,3 +62,14 @@ exception_messages={
 # File names
 USER_CRED_FILE='user_cred.txt'
 PT_USER_CRED_FILE='pt_user_cred.json'
+CONFIG_FILE='configuration.properties'
+
+# Configuration file constant name
+SERVER_SECTION='server'
+S_PORT='s.port'
+S_IP='s.ip'
+
+# Properties keys name in properties map
+SERVER_IP='s_ip'
+SERVER_PORT='s_port'
+

@@ -1,13 +1,10 @@
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives import hashes
-import os,sys,binascii,time, socket
+import os,sys,socket, ConfigParser
 import constants as CN
-import time
-import pickle,json
+import pickle,json,time
 import struct
-import constants as constants
-from Message import Message, MessageParser
+from Message import Message
 from Cryptographer import Cryptographer as crypt
 
 
@@ -25,8 +22,6 @@ def unpickle_message(msg):
     msg = pickle.loads(msg)
     return Message(msg_type=msg['msg_type'], payload=msg['payload'], signature=msg['signature'],iv_tag=msg['iv_tag'] )
 
-def get_time():
-    return long(time.time())
 
 def send_msg(sender_socket, dest_addr, msg):
     msg = pickle_message(msg)
@@ -156,6 +151,25 @@ def create_hased_user_cred():
             hashed=c.compute_hash_from_client_password(bytes(pt_uc["un"]),bytes(pt_uc["pwd"]))
             d=u+"##"+hashed+"\n"
             ucf.write(d)
+
+#  Load configuration like server port at start up
+
+
+def properties():
+    config = ConfigParser.RawConfigParser()
+    config.read(CN.CONFIG_FILE)
+    properties={CN.SERVER_IP:config.get(CN.SERVER_SECTION,CN.S_IP),
+                CN.SERVER_PORT:int(config.get(CN.SERVER_SECTION,CN.S_PORT))}
+    return properties
+
+def get_server_port():
+    return properties().get(CN.SERVER_PORT)
+
+def get_server_ip():
+    return properties().get(CN.SERVER_IP)
+
+def get_time():
+    return long(time.time())
 
 
 

@@ -17,4 +17,3 @@ def do_stuff():
 
 
 
-do_stuff()

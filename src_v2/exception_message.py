@@ -9,6 +9,7 @@ CHALLENGE_FAILED="User failed the challenge."
 INCOMPLETE_SEND="Incomplete send request. Username and message required \n e.g send alice Hi Alice!."
 INCORRECT_COMMAND="Command not correct"
 REV_MSG_ERROR="Error occurred in UDP.py receive_message."
+INVALID_ARGUMENT='Run as: python ChatClient.py -p <port-number>'
 
 
 
