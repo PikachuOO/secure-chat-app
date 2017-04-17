@@ -25,6 +25,8 @@ def unpickle_message(msg):
     msg = pickle.loads(msg)
     return Message(msg_type=msg['msg_type'], payload=msg['payload'], signature=msg['signature'],iv_tag=msg['iv_tag'] )
 
+def get_time():
+    return long(time.time())
 
 def send_msg(sender_socket, dest_addr, msg):
     msg = pickle_message(msg)

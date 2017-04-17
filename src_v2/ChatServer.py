@@ -14,7 +14,6 @@ cryptographer = Cryptographer()
 
 class ServerKeyChain:
     def __init__(self):
-        pass
         self.usernames = {}
         self.address_dict = {}
         server_public_key = open(constants.SERVER_PUBLIC_KEY, 'rb')
@@ -245,6 +244,23 @@ class ChatServer:
             # if sleep_time > 0:
             #     time.sleep(sleep_time)
 
+    @udp.endpoint("HeartBeat")
+    def receive_heartbeat(self, msg, address):
+        msg = unpickle_message(msg)
+        user = self.keychain.get_user_from_address(address)
+        print "received heartbeat from", user.username
+        if user is None:
+            raise "Invalid User"
+        dec_msg = self.msg_cryptographer.symmetric_decryption(msg, user.aes_key, self.keychain.private_key)
+        dec_msg = tuple_from_string(dec_msg)
+        rec_ts = long(dec_msg[1])
+        rec_un = dec_msg[0]
+        if rec_un == user.username and rec_ts <= get_time() :
+            print "valid heartbeat"
+            user.last_hearbeat_recv = rec_ts
+            self.keychain.add_user(user)
+        else:
+            raise "Invalid Hearbeat"
 
 def run():
     try:

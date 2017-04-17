@@ -331,7 +331,9 @@ class ChatClient:
     def generate_heartbeat(self):
         while True:
             server = self.keychain.get_user_from_address(self.server_address)
-            ht_msg = self.msg_cryptographer.symmetric_encryption(self.username, server.aes_key, self.keychain.server_public_key)
+            ts = str(get_time())
+            pl = string_from_tuple((self.username, ts))
+            ht_msg = self.msg_cryptographer.symmetric_encryption(pl, server.aes_key, self.keychain.server_public_key)
             ht_msg.msg_type = "HeartBeat"
             send_msg(self.socket, self.server_address, ht_msg)
             time.sleep(10)
