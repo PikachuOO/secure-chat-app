@@ -58,7 +58,3 @@ def run(client_port):
     except (socket.error, IOError) as e:
         print str(e)
     sys.exit(0)
-
-
-if __name__ == "__main__":
-    run()

@@ -250,9 +250,9 @@ class ChatServer:
     def receive_heartbeat(self, msg, address):
         msg = unpickle_message(msg)
         user = self.keychain.get_user_from_address(address)
-        print "received heartbeat from", user.username
         if user is None:
             raise "Invalid User"
+        print "received heartbeat from", user.username
         dec_msg = self.msg_cryptographer.symmetric_decryption(msg, user.aes_key, self.keychain.private_key)
         dec_msg = tuple_from_string(dec_msg)
         rec_ts = long(dec_msg[1])
