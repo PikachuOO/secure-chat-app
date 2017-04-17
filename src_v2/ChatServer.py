@@ -26,10 +26,16 @@ class ServerKeyChain:
         return self.usernames
 
     def get_user_from_address(self, address):
-        return self.address_dict[address]
+        if address in self.address_dict:
+            return self.address_dict[address]
+        else:
+            return None
 
     def get_user_from_username(self, username):
-        return self.usernames[username]
+        if username in self.usernames:
+            return self.usernames[username]
+        else:
+            return None
 
     def add_user(self, user):
         self.address_dict[user.address] = user
@@ -49,7 +55,7 @@ class ServerUser:
         self.aes_key = None
         self.address = None
         self.is_logged = None
-        self.last_heartbeat_recv = None
+        self.last_hearbeat_recv = None
         self.next_expected = None
         self.challenge_given = None
         self.nonces_used = []
@@ -230,19 +236,15 @@ class ChatServer:
 
     def check_heartbeat(self):
         while True:
-            logged_out = []
-            # t1 = get_timestamp()
-            # for user in self.keychain.list_users().itervalues():
-            #     if user.last_heartbeat_recv is not None and get_timestamp() >= user.last_heartbeat_recv:
-            #         logged_out.append(user)
-            #         print "Logged out", user.username
-            #
-            # for user in logged_out:
-            #     self.keychain.remove_user(user)
-            # t2 = get_timestamp()
-            # sleep_time = 30 - (t2 - t1)
-            # if sleep_time > 0:
-            #     time.sleep(sleep_time)
+            logged_out_users = []
+            for user in self.keychain.list_users().itervalues():
+                if user.last_hearbeat_recv is not None and get_time() - user.last_hearbeat_recv >= 10:
+                    logged_out_users.append(user)
+                    print user.username, "Logged out"
+            for user in logged_out_users:
+                self.keychain.remove_user(user)
+                self.send_broadcast_user_logout(user)
+            time.sleep(10)
 
     @udp.endpoint("HeartBeat")
     def receive_heartbeat(self, msg, address):
