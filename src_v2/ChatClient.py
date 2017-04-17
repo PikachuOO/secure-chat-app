@@ -3,7 +3,8 @@ import time
 from Message import *
 from UDP import *
 from Helper import *
-from constants import message_type
+from security_exceptions import SecurityException
+import exception_message as EM
 import constants as constants
 from Cryptographer import Cryptographer
 udp = UDP()
@@ -55,7 +56,7 @@ class ClientUser:
 
 class ChatClient:
     def __init__(self, server_address):
-        self.server_address = server_address
+        self.server_address = (get_server_ip(), get_server_port())
         self.keychain = ClientKeyChain()
         user = ClientUser()
         user.username = ""
@@ -341,5 +342,20 @@ class ChatClient:
 
 import cli
 
+def main(argv):
+    try:
+        if len(argv) == 2 and argv[0] == '-p':
+            cli.run(int(argv[1]))
+        else:
+            raise SecurityException(EM.INVALID_ARGUMENT)
+    except (SecurityException,Exception) as e:
+        print str(e)
+
 if __name__ == '__main__':
-    cli.run()
+    argv=sys.argv
+    try:
+        if len(argv) == 0:
+            raise SecurityException(EM.INVALID_ARGUMENT)
+        main(sys.argv[1:])
+    except (SecurityException,Exception) as e:
+        print str(e)
