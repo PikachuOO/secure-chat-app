@@ -2,6 +2,7 @@ import getpass
 import socket
 import sys
 import Helper as h
+import exception_message as EM
 
 import ChatClient as client
 #import exception as exception
@@ -22,17 +23,17 @@ class TextInterface:
                 print ("Successfully Logged in")
                 break
             else:
-                print ("Unsuccessful login")
+                print EM.INVALID_USERNAME_PWD
 
     def show_menu(self):
         print "Enter a command:\n1. list\n2. send <USER> <MESSAGE>\n3. quit\n"
         while True:
             command = raw_input()
             userinput = command.split(" ", 2)
-            if userinput[0] == "list":
+            if userinput[0] == "list" and len(userinput)==1:
                 l = self.client.list()
 
-                if l is None:  # List Failed
+                if l is None:
                     print "List Failed"
                     continue
 
@@ -41,13 +42,13 @@ class TextInterface:
                 if len(userinput) == 3:
                     self.client.send(userinput[1], userinput[2])
                 else:
-                    print "Give user and message also"
-            elif userinput[0] == "quit":
+                    print EM.INCORRECT_SEND_COMMAND
+            elif userinput[0] == "quit" and len(userinput)==1:
                 self.client.quit()
-                print ("Quitting the application")
+                print EM.QUIT_APP
                 break
             else:
-                print ("Enter correct command")
+                print EM.INCORRECT_COMMAND
 
 
 def run(client_port):

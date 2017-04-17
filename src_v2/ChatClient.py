@@ -73,21 +73,17 @@ class ChatClient:
 
     def login(self, username, password):
         if len(username) == 0:
-            print "Invalid Username"
+            print EM.INVALID_USERNAME_PWD
             return False
 
         if len(password) == 0:
-            print "Invalid password"
+            print EM.INVALID_USERNAME_PWD
             return False
 
         self.username = username
         self.password_hash = ""
         self.password_hash = cryptographer.compute_hash_from_client_password(self.username, password)
-        # if self.pass_thread is not None and self.pass_thread.isAlive():
-        #     self.pass_thread.join()
-        # self.pass_thread = threading.Thread(target=self.compute_hash, args=(password,))
-        # self.pass_thread.daemon = True
-        # self.pass_thread.start()
+
 
         try:
             login_msg = Message("Login", payload=self.username)
@@ -133,16 +129,14 @@ class ChatClient:
                                 ln = self.msg_cryptographer.symmetric_decryption(final_message, server_user.aes_key, self.keychain.private_key)
                                 return final_message.msg_type == "Accept" and ln == n4
                             else:
-                                print "Wrong Password\n"
-                                return False
+                                raise SecurityException(EM.INVALID_USERNAME_PWD)
                         else:
-                            print "Sign not verified"
-                            return False
+                            raise SecurityException(EM.INVALID_SIGNATURE)
             else:
                 print msg.payload
                 return False
         except socket.timeout:
-            print "Socket Timed Out, Try Again Later"
+            print EM.SOCKET_TIMED_OUT
             return False
         except:
             return False
@@ -167,7 +161,7 @@ class ChatClient:
             else:
                 pass
         except socket.timeout:
-            print "Socket timed out, while req list"
+            print EM.SOCKET_TIMED_OUT
 
     def send(self,recipient_un, message_to_send):
         if recipient_un == self.username:
@@ -236,18 +230,16 @@ class ChatClient:
                                 else:
                                     self.keychain.remove_user(peer)
                             else:
-                                print "Invalid Message"
+                                print EM.INVALID_MSG_TYPE
                         else:
-                            print "Not verdsfsdf"
+                            print EM.INVALID_SIGNATURE
 
                     else:
-                        print "Invalid Message type"
-                        pass
-            else:
-                pass
+                        print EM.INVALID_MSG_TYPE
+
+
         else:
-            print "Invalid sender"
-            pass
+            print EM.INVALID_USERNAME_PWD
 
     @udp.endpoint("Message")
     def receive_message(self, msg, address, options=""):
@@ -297,14 +289,8 @@ class ChatClient:
                     if address == peer.address:
                         dec_f_msg = self.msg_cryptographer.symmetric_decryption(final_msg, peer.aes_key, self.keychain.private_key)
                         print "<Message from " + peer.username + '>: ' + dec_f_msg
-                else:
-                    print "Incalkddsnds"
-
-            else:
-                print "Invlid Hello"
-                pass
         except:
-            print "Cannot decrypt the server permission token"
+            print EM.DECRYPTION_ERROR
 
     def quit(self):
         server = self.keychain.get_user_from_address(self.server_address)
@@ -327,7 +313,7 @@ class ChatClient:
                 self.keychain.remove_user(u)
 
         else:
-            print "Invalid Sender"
+            print EM.INVALID_USERNAME_PWD
 
     def generate_heartbeat(self):
         while True:

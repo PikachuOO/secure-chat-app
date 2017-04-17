@@ -7,6 +7,7 @@ from UDP import UDP
 from Helper import *
 from Cryptographer import Cryptographer
 import constants as constants
+import exception_message as EM
 
 udp = UDP()
 cryptographer = Cryptographer()
@@ -102,12 +103,10 @@ class ChatServer:
                 challenge_message = Message(msg_type="Challenge", payload=final_challenege)
                 send_msg(self.socket, address, challenge_message)
             else:
-                temp = "You are already logged in!!"
-                reject_msg = Message(msg_type="Reject", payload=temp)
+                reject_msg = Message(msg_type="Reject", payload=EM.INVALID_USERNAME_PWD)
                 send_msg(self.socket, address, reject_msg)
         else:
-            temp = "You are not registered!"
-            reject_msg = Message(msg_type="Reject", payload=temp)
+            reject_msg = Message(msg_type="Reject", payload=EM.INVALID_USERNAME_PWD)
             send_msg(self.socket, address, reject_msg)
 
     @udp.endpoint("Solution")
@@ -145,14 +144,14 @@ class ChatServer:
                     if pass_hash == self.registered_users[user.username] and nonce_verified:
                         user.public_key = cryptographer.bytes_to_public_key(payload_dec[3])
                         self.keychain.add_user(user)
-                        print "password matched from", user.username
+                        #print "password matched from", user.username
                         result_msg = self.msg_cryptographer.symmetric_encryption(n4, user.aes_key, user.public_key)
                         result_msg.msg_type = "Accept"
                         send_msg(self.socket, address, result_msg)
                     else:
-                        print "password not matched from", user.username
+                        print EM.INVALID_USERNAME_PWD
                         self.keychain.remove_user(user)
-                        result_msg = Message(msg_type="Reject", payload="Password Did not match")
+                        result_msg = Message(msg_type="Reject", payload=EM.INVALID_USERNAME_PWD)
                         send_msg(self.socket, address, result_msg)
                         pass
                 else:
@@ -202,7 +201,7 @@ class ChatServer:
                 pl.msg_type = "ResponseDetail"
                 send_msg(self.socket, address, pl)
             else:
-                temp = "No user named " + recipient_un
+                temp =EM.INVALID_USERNAME_PWD + recipient_un
                 m = string_from_tuple((n1, temp))
                 m = self.msg_cryptographer.symmetric_encryption(m, user.aes_key, user.public_key)
                 m.msg_type = "ResponseDetail"
@@ -213,7 +212,7 @@ class ChatServer:
         msg = unpickle_message(msg)
         user = self.keychain.get_user_from_address(address)
         if user is None or user.public_key is None:
-            print "Invalid user"
+            print EM.INVALID_USERNAME_PWD
         else:
             dec_msg = self.msg_cryptographer.symmetric_decryption(msg, user.aes_key, self.keychain.private_key)
             if dec_msg == user.username:
@@ -223,7 +222,7 @@ class ChatServer:
                 self.keychain.remove_user(user)
                 self.send_broadcast_user_logout(user)
             else:
-                print "Invalid Logout req"
+                print EM.INVALID_LOGOUT
                 pass
 
     def send_broadcast_user_logout(self, user):
@@ -251,27 +250,28 @@ class ChatServer:
         msg = unpickle_message(msg)
         user = self.keychain.get_user_from_address(address)
         if user is None:
-            raise "Invalid User"
+            raise EM.INVALID_USERNAME_PWD
         print "received heartbeat from", user.username
         dec_msg = self.msg_cryptographer.symmetric_decryption(msg, user.aes_key, self.keychain.private_key)
         dec_msg = tuple_from_string(dec_msg)
         rec_ts = long(dec_msg[1])
         rec_un = dec_msg[0]
         if rec_un == user.username and rec_ts <= get_time() :
-            print "valid heartbeat"
+            #print "valid heartbeat"
             user.last_hearbeat_recv = rec_ts
             self.keychain.add_user(user)
         else:
-            raise "Invalid Hearbeat"
+            print EM.INVALID_HEARTBEAT
 
 def run():
     try:
         server = ChatServer()
-        udp.start_udp(server, '127.0.0.1', 9090, 5)
+        udp.start_udp(server, '', 9090, 5)
         print "Server Running!!"
         server.check_heartbeat_thread.join()
-    except :
-        print "str(e)"
+    except (socket.error,Exception) as e:
+        print str(e)
+
 
 if __name__ == "__main__":
     run()
