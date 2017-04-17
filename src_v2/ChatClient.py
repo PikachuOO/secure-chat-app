@@ -1,5 +1,3 @@
-import time
-
 from Message import *
 from UDP import *
 from Helper import *
@@ -7,6 +5,7 @@ from security_exceptions import SecurityException
 import exception_message as EM
 import constants as constants
 from Cryptographer import Cryptographer
+
 udp = UDP()
 cryptographer = Cryptographer()
 

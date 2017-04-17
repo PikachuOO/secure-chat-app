@@ -1,6 +1,6 @@
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
-import os,sys,socket, ConfigParser
+import os,socket, ConfigParser
 import constants as CN
 import pickle,json,time
 import struct

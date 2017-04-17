@@ -1,6 +1,5 @@
 import socket
 import threading
-
 from Message import MessageParser
 
 
