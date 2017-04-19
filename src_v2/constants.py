@@ -3,8 +3,6 @@ SERVER_PUBLIC_KEY = "server_public_key.der"
 NONCE_LENGTH=32
 P_DIFFICULTY=2
 
-
-
 BUFFER_SIZE = 2**16
 
 # Crypto variables

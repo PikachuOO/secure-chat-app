@@ -5,11 +5,12 @@ from security_exceptions import SecurityException
 import exception_message as EM
 import constants as constants
 from Cryptographer import Cryptographer
-
+import sys
 udp = UDP()
 cryptographer = Cryptographer()
 
 
+# To save the user details a particular client or server
 class ClientKeyChain:
     def __init__(self):
         pass
@@ -20,27 +21,33 @@ class ClientKeyChain:
         self.server_public_key = cryptographer.load_public_key(server_public_key)
         self.dh_private_key, self.dh_public_key = cryptographer.get_dh_pair()
 
+    # Returns the user based on this address
     def get_user_from_address(self, address):
         if address in self.address_dict:
             return self.address_dict[address]
         else:
             return None
 
+    # Returns the user bases on his username
     def get_user_from_username(self, username):
         if username in self.usernames:
             return self.usernames[username]
         else:
             return None
 
+    # Adding the user to the keychain
     def add_user(self, user):
         self.address_dict[user.address] = user
         self.usernames[user.username] = user
 
+    # Removing the user from the keychain
     def remove_user(self, user):
         self.address_dict.pop(user.address, None)
         self.usernames.pop(user.username, None)
 
 
+# A user on the point of view of the client
+# It can either be another client or a server
 class ClientUser:
     def __init__(self):
         self.username = None
@@ -53,6 +60,7 @@ class ClientUser:
         self.is_authenticated = False
 
 
+# Handling methods of client
 class ChatClient:
     def __init__(self, server_address):
         self.server_address = (get_server_ip(), get_server_port())
@@ -70,20 +78,18 @@ class ChatClient:
         self.heartbeat_thread.daemon = True
         self.pass_thread = None
 
+    # Login method for the cient, Returns true of false
     def login(self, username, password):
         if len(username) == 0:
-            print EM.INVALID_USERNAME_PWD
+            print "Invalid Username"
             return False
 
         if len(password) == 0:
-            print EM.INVALID_USERNAME_PWD
+            print "Invalid password"
             return False
 
         self.username = username
-        self.password_hash = ""
         self.password_hash = cryptographer.compute_hash_from_client_password(self.username, password)
-
-
         try:
             login_msg = Message("Login", payload=self.username)
             msg, address = send_receive_msg(self.socket, self.server_address, login_msg, udp)
@@ -93,17 +99,23 @@ class ChatClient:
                     n1 = msg.payload[2]
                     challenge_received = (msg.payload[0], msg.payload[1])
                     n2 = os.urandom(16)
+
+                    # creating a user for the server
                     server_user = ClientUser()
                     server_user.public_key = self.keychain.server_public_key
                     server_user.address = self.server_address
                     server_user.nonces_used.append(n2)
                     self.keychain.add_user(server_user)
+
+                    # Solving the puzzle it received from the server
                     response = solve_puzzle(challenge_received)
                     dh_public_key = cryptographer.public_key_to_bytes(self.keychain.dh_public_key)
                     payload = (str(response), n1, n2, dh_public_key)
                     payload = string_from_tuple(payload)
                     encrypted_payload = self.msg_cryptographer.encrypt_with_public_key(self.keychain.server_public_key, payload)
                     response_message = Message(msg_type="Solution", payload=encrypted_payload)
+
+                    # Receiving the Diffie Hellman contribution from the server
                     msg,address = send_receive_msg(self.socket, self.server_address, response_message, udp)
                     if msg.msg_type != "Server_DH":
                         return False
@@ -121,28 +133,36 @@ class ChatClient:
                             payload = string_from_tuple((n3, n4, self.password_hash, cryptographer.public_key_to_bytes(self.keychain.public_key)))
                             pass_msg = self.msg_cryptographer.symmetric_encryption(payload, server_user.aes_key, self.keychain.server_public_key)
                             pass_msg.msg_type = "Password"
+
+                            # Sending the Diffie Hellman contribution from the client
                             final_message, address = send_receive_msg(self.socket, address, pass_msg, udp)
+
+                            # Checking the final status for the connection
                             if final_message.msg_type != "Reject":
                                 self.heartbeat_thread.start()
                                 self.keychain.add_user(server_user)
                                 ln = self.msg_cryptographer.symmetric_decryption(final_message, server_user.aes_key, self.keychain.private_key)
                                 return final_message.msg_type == "Accept" and ln == n4
                             else:
-                                raise SecurityException(EM.INVALID_USERNAME_PWD)
+                                print "Wrong Password\n"
+                                return False
                         else:
-                            raise SecurityException(EM.INVALID_SIGNATURE)
+                            print "Sign not verified"
+                            return False
             else:
                 print msg.payload
                 return False
         except socket.timeout:
-            print EM.SOCKET_TIMED_OUT
+            print "Socket Timed Out, Try Again Later"
             return False
         except:
             return False
 
+    # Computing the hash of the password for authenticy and verifying the client
     def compute_hash(self, password):
         self.password_hash = cryptographer.compute_hash_from_client_password(self.username, password)
 
+    # client issues the list command
     def list(self):
         try:
             n1 = os.urandom(16)
@@ -150,6 +170,8 @@ class ChatClient:
             payl = self.msg_cryptographer.symmetric_encryption(n1, server.aes_key, server.public_key)
             payl.msg_type = "List"
             list_resp, address = send_receive_msg(self.socket, server.address, payl, udp)
+
+            # Checking if the list comes from the server only
             if address == self.server_address:
                 dec_user_list = self.msg_cryptographer.symmetric_decryption(list_resp, server.aes_key, self.keychain.private_key)
                 user_list, n1_resp = tuple_from_string(dec_user_list)
@@ -160,13 +182,18 @@ class ChatClient:
             else:
                 pass
         except socket.timeout:
-            print EM.SOCKET_TIMED_OUT
+            print "Socket timed out, while req list"
 
+    # Client issues a send message to another client
     def send(self,recipient_un, message_to_send):
+
+        # Checking the recipient username
         if recipient_un == self.username:
             print "Cannot send a message to yourself"
         else:
             recp = self.keychain.get_user_from_username(recipient_un)
+
+            # Checking if the user is already authenticated in the client POV
             if recp is not None and recp.is_authenticated:
                 enc_msg = self.msg_cryptographer.symmetric_encryption(message_to_send, recp.aes_key, recp.public_key)
                 enc_msg.msg_type = "Message"
@@ -174,12 +201,15 @@ class ChatClient:
             else:
                 self.send_with_handshake(recipient_un, message_to_send)
 
+    # Send a message along with handshake if the client is not already authenticated before
     def send_with_handshake(self, recipient_un, message_to_send):
         n1 = os.urandom(16)
         pl = string_from_tuple((recipient_un, n1))
         server = self.keychain.get_user_from_address(self.server_address)
         req_msg = self.msg_cryptographer.symmetric_encryption(pl, server.aes_key, self.keychain.server_public_key)
         req_msg.msg_type = "RequestDetail"
+
+        # Requesting the client details from the server
         msg, address = send_receive_msg(self.socket, server.address, req_msg, udp)
         if address == self.server_address and msg.msg_type == "ResponseDetail":
             access_token_b = self.msg_cryptographer.symmetric_decryption(msg, server.aes_key, self.keychain.private_key)
@@ -195,6 +225,8 @@ class ChatClient:
                     n1 = os.urandom(16)
                     pl = string_from_tuple((self.username, n1))
                     msg = self.msg_cryptographer.encrypt_with_public_key(b_pub_key, pl)
+
+                    # Sending hello to the client with details provided from the server
                     hello_msg = Message(msg_type="Hello", payload=msg, iv_tag=b_token)
                     msg, address = send_receive_msg(self.socket, b_address, hello_msg, udp)
                     if msg.msg_type == "HelloResponse":
@@ -215,6 +247,8 @@ class ChatClient:
                             dh_resp = Message(msg_type="PeerDHResponse", payload=pl)
                             peer_dh = cryptographer.bytes_to_public_key(peer_dh)
                             peer.aes_key = cryptographer.get_symmetric_key(peer_dh, priv_key_dh_peer)
+
+                            # Sending the Diffie Hellman contribution from the client
                             msg, address = send_receive_msg(self.socket, b_address, dh_resp, udp)
                             self.keychain.add_user(peer)
                             if msg.msg_type == "PeerAccept":
@@ -229,17 +263,20 @@ class ChatClient:
                                 else:
                                     self.keychain.remove_user(peer)
                             else:
-                                print EM.INVALID_MSG_TYPE
+                                print "Invalid Message"
                         else:
-                            print EM.INVALID_SIGNATURE
+                            print "Not verified the signature"
 
                     else:
-                        print EM.INVALID_MSG_TYPE
-
-
+                        print "Invalid Message type"
+                        pass
+            else:
+                pass
         else:
-            print EM.INVALID_USERNAME_PWD
+            print "Invalid sender"
+            pass
 
+    # Receiving a message from an already authenticated client
     @udp.endpoint("Message")
     def receive_message(self, msg, address, options=""):
         msg = unpickle_message(msg)
@@ -248,6 +285,7 @@ class ChatClient:
             dec_msg = self.msg_cryptographer.symmetric_decryption(msg, sender.aes_key, self.keychain.private_key)
             print "<Message from " + sender.username + '>: ' + dec_msg
 
+    # Receiving a Hello from an unauthenticated client
     @udp.endpoint("Hello")
     def receive_hello(self, msg, address):
         server = self.keychain.get_user_from_address(self.server_address)
@@ -274,6 +312,8 @@ class ChatClient:
                 pl = self.msg_cryptographer.encrypt_with_public_key(a_public_key, pl)
                 hello_resp = Message(msg_type="HelloResponse", payload=pl)
                 msg, address = send_receive_msg(self.socket, peer.address, hello_resp, udp)
+
+                # Receiving an Diffie Hellman contribution from an other client as a response.
                 if msg.msg_type == "PeerDHResponse":
                     dec_msg = self.msg_cryptographer.decrypt_with_private_key(self.keychain.private_key, msg.payload)
                     (n2_resp, n3, peer_dh) = tuple_from_string(dec_msg)
@@ -288,9 +328,16 @@ class ChatClient:
                     if address == peer.address:
                         dec_f_msg = self.msg_cryptographer.symmetric_decryption(final_msg, peer.aes_key, self.keychain.private_key)
                         print "<Message from " + peer.username + '>: ' + dec_f_msg
-        except:
-            print EM.DECRYPTION_ERROR
+                else:
+                    print "Incalkddsnds"
 
+            else:
+                print "Invlid Hello"
+                pass
+        except:
+            print "Cannot decrypt the server permission token"
+
+    # client issues the quit command
     def quit(self):
         server = self.keychain.get_user_from_address(self.server_address)
         logout_msg = self.msg_cryptographer.symmetric_encryption(self.username, server.aes_key, server.public_key)
@@ -299,7 +346,7 @@ class ChatClient:
         dec_msg = self.msg_cryptographer.symmetric_decryption(logout_resp, server.aes_key, self.keychain.private_key)
         return logout_resp.msg_type == "LogoutResp" and dec_msg == self.username
 
-
+    # Server notifies other cients that a particular client is logged out
     @udp.endpoint("Logout")
     def receive_logout_broadcast(self, msg, address):
         server = self.keychain.get_user_from_address(address)
@@ -312,8 +359,9 @@ class ChatClient:
                 self.keychain.remove_user(u)
 
         else:
-            print EM.INVALID_USERNAME_PWD
+            print "Invalid Sender"
 
+    # Client generates heart beat for every 8 seconds
     def generate_heartbeat(self):
         while True:
             server = self.keychain.get_user_from_address(self.server_address)
@@ -322,18 +370,18 @@ class ChatClient:
             ht_msg = self.msg_cryptographer.symmetric_encryption(pl, server.aes_key, self.keychain.server_public_key)
             ht_msg.msg_type = "HeartBeat"
             send_msg(self.socket, self.server_address, ht_msg)
-            time.sleep(10)
+            time.sleep(8)
 
 
-import cli
+import client_cli
 
 def main(argv):
     try:
         if len(argv) == 2 and argv[0] == '-p':
-            cli.run(int(argv[1]))
+            client_cli.run(int(argv[1]))
         else:
             raise SecurityException(EM.INVALID_ARGUMENT)
-    except (SecurityException,Exception) as e:
+    except (SecurityException, Exception) as e:
         print str(e)
 
 if __name__ == '__main__':

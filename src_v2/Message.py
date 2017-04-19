@@ -5,6 +5,7 @@ from Cryptographer import Cryptographer
 
 cryptographer = Cryptographer()
 
+# Message format
 class Message:
     def __init__(self, msg_type, payload, signature="", timestamp="", iv_tag=""):
         self.msg_type = msg_type
@@ -22,6 +23,7 @@ class MessageParser:
         m_type = message['msg_type']
         return message_dictionary[m_type]
 
+# Cryptographic operations on the message
 class MessageCryptographer:
 
     def encrypt_with_public_key(self, public_key, msg):
@@ -40,7 +42,6 @@ class MessageCryptographer:
         iv_ad_tag = self.encrypt_with_public_key(dest_pub_key, iv+ad+tag)
         encrypted_message = Message(msg_type= "", payload=encrypted_payload, iv_tag=iv_ad_tag)
         return encrypted_message
-
 
     def symmetric_decryption(self, msg, sym_key, my_priv_key):
         aes_enc_payload = msg.payload

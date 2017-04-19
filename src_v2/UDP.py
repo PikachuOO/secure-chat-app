@@ -2,15 +2,20 @@ import socket
 import threading
 from Message import MessageParser
 
-
+# UDP endpoint for both client and the server
 class UDP:
     def __init__(self):
+        # Socket initialization
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.handlers = {}
         self.live_threads = 0
+
+        # Threads for multiprocessing
         self.threads = []
         self.running_thread = 0
         self.host = None
+
+        # Receiving end is waiting
         self.content_to_hanger = ""
         self.condition = threading.Condition()
         self.onhang = False

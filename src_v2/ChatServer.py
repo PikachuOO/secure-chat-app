@@ -1,15 +1,18 @@
+import sys
 import threading
+import time
+import socket
 from Message import *
 from UDP import UDP
 from Helper import *
 from Cryptographer import Cryptographer
 import constants as constants
-import exception_message as EM
 
 udp = UDP()
 cryptographer = Cryptographer()
 
 
+# To save the user details a particular client or server
 class ServerKeyChain:
     def __init__(self):
         self.usernames = {}
@@ -20,30 +23,36 @@ class ServerKeyChain:
         self.private_key = cryptographer.load_private_key(server_private_key)
         self.dh_private_key, self.dh_public_key = cryptographer.get_dh_pair()
 
+    # Returns all the list of al client
     def list_users(self):
         return self.usernames
 
+    # Returns the user based on this address
     def get_user_from_address(self, address):
         if address in self.address_dict:
             return self.address_dict[address]
         else:
             return None
 
+    # Returns the user bases on his username
     def get_user_from_username(self, username):
         if username in self.usernames:
             return self.usernames[username]
         else:
             return None
 
+    # Adding the user to the keychain
     def add_user(self, user):
         self.address_dict[user.address] = user
         self.usernames[user.username] = user
 
+    # Removing the user from the keychain
     def remove_user(self, user):
         self.address_dict.pop(user.address, None)
         self.usernames.pop(user.username, None)
 
 
+# A client on the point of view of the server
 class ServerUser:
     def __init__(self):
         self.username = None
@@ -58,7 +67,7 @@ class ServerUser:
         self.challenge_given = None
         self.nonces_used = []
 
-
+# Handling methods of client
 class ChatServer:
     def __init__(self):
         self.socket = udp.socket
@@ -67,18 +76,12 @@ class ChatServer:
         self.msg_cryptographer = MessageCryptographer()
         self.certificate = None
         self.used_nonce_list = []
-        self.puz_thread = threading.Thread(target=self.generate_puzzle)
-        self.puz_thread.daemon = True
-        self.puz_thread.start()
         self.check_heartbeat_thread = threading.Thread(target=self.check_heartbeat)
         self.check_heartbeat_thread.daemon = True
         self.check_heartbeat_thread.start()
         self.registered_users = load_hasehed_pwd()
 
-    def generate_puzzle(self):
-        while True:
-            time.sleep(15)
-
+    # Receiving a Login request from a client
     @udp.endpoint("Login")
     def receive_new_login(self, msg, address):
         msg = unpickle_message(msg)
@@ -100,12 +103,15 @@ class ChatServer:
                 challenge_message = Message(msg_type="Challenge", payload=final_challenege)
                 send_msg(self.socket, address, challenge_message)
             else:
-                reject_msg = Message(msg_type="Reject", payload=EM.INVALID_USERNAME_PWD)
+                temp = "You are already logged in!!"
+                reject_msg = Message(msg_type="Reject", payload=temp)
                 send_msg(self.socket, address, reject_msg)
         else:
-            reject_msg = Message(msg_type="Reject", payload=EM.INVALID_USERNAME_PWD)
+            temp = "You are not registered!"
+            reject_msg = Message(msg_type="Reject", payload=temp)
             send_msg(self.socket, address, reject_msg)
 
+    # Receiving a solution for the puzzle
     @udp.endpoint("Solution")
     def receive_solution(self, msg, address):
         user = self.keychain.get_user_from_address(address)
@@ -129,6 +135,8 @@ class ChatServer:
                     payload = (n2, n3, cryptographer.public_key_to_bytes(self.keychain.dh_public_key))
                     payload = string_from_tuple(payload)
                     payload_sign = cryptographer.sign_message(self.keychain.private_key, payload)
+
+                    # Diffie Hellman contribution from client
                     resp = Message(msg_type="Server_DH", payload=payload, signature=payload_sign)
                     user.nonces_used.append(n3)
                     self.keychain.add_user(user)
@@ -141,14 +149,14 @@ class ChatServer:
                     if pass_hash == self.registered_users[user.username] and nonce_verified:
                         user.public_key = cryptographer.bytes_to_public_key(payload_dec[3])
                         self.keychain.add_user(user)
-                        #print "password matched from", user.username
+                        print "password matched from", user.username
                         result_msg = self.msg_cryptographer.symmetric_encryption(n4, user.aes_key, user.public_key)
                         result_msg.msg_type = "Accept"
                         send_msg(self.socket, address, result_msg)
                     else:
-                        print EM.INVALID_USERNAME_PWD
+                        print "password not matched from", user.username
                         self.keychain.remove_user(user)
-                        result_msg = Message(msg_type="Reject", payload=EM.INVALID_USERNAME_PWD)
+                        result_msg = Message(msg_type="Reject", payload="Password Did not match")
                         send_msg(self.socket, address, result_msg)
                         pass
                 else:
@@ -157,6 +165,7 @@ class ChatServer:
             else:
                 self.keychain.remove_user(user)
 
+    # Client requests online userlist
     @udp.endpoint("List")
     def request_list(self, msg, address):
         msg = unpickle_message(msg)
@@ -177,6 +186,7 @@ class ChatServer:
         else:
             pass
 
+    # Client request Details for a particular client
     @udp.endpoint("RequestDetail")
     def request_detail(self, msg, address):
         msg = unpickle_message(msg)
@@ -198,18 +208,19 @@ class ChatServer:
                 pl.msg_type = "ResponseDetail"
                 send_msg(self.socket, address, pl)
             else:
-                temp =EM.INVALID_USERNAME_PWD + recipient_un
+                temp = "No user named " + recipient_un
                 m = string_from_tuple((n1, temp))
                 m = self.msg_cryptographer.symmetric_encryption(m, user.aes_key, user.public_key)
                 m.msg_type = "ResponseDetail"
                 send_msg(self.socket, address, m)
 
+    # Client issues a quit command
     @udp.endpoint("Quit")
     def receive_quit(self, msg, address):
         msg = unpickle_message(msg)
         user = self.keychain.get_user_from_address(address)
         if user is None or user.public_key is None:
-            print EM.INVALID_USERNAME_PWD
+            print "Invalid user"
         else:
             dec_msg = self.msg_cryptographer.symmetric_decryption(msg, user.aes_key, self.keychain.private_key)
             if dec_msg == user.username:
@@ -219,9 +230,10 @@ class ChatServer:
                 self.keychain.remove_user(user)
                 self.send_broadcast_user_logout(user)
             else:
-                print EM.INVALID_LOGOUT
+                print "Invalid Logout req"
                 pass
 
+    # Client issues a logout broadcast details of a particular client
     def send_broadcast_user_logout(self, user):
         ip = convert_addr_to_bytes(user.address)
         for client in self.keychain.list_users().itervalues():
@@ -230,6 +242,7 @@ class ChatServer:
                 log.msg_type = "Logout"
                 send_msg(self.socket, client.address, log)
 
+    # server periodically checks the status of the online clients
     def check_heartbeat(self):
         while True:
             logged_out_users = []
@@ -240,35 +253,34 @@ class ChatServer:
             for user in logged_out_users:
                 self.keychain.remove_user(user)
                 self.send_broadcast_user_logout(user)
-            time.sleep(10)
+            time.sleep(5)
 
+    # Server receives heartbeat from a client
     @udp.endpoint("HeartBeat")
     def receive_heartbeat(self, msg, address):
         msg = unpickle_message(msg)
         user = self.keychain.get_user_from_address(address)
         if user is None:
-            raise EM.INVALID_USERNAME_PWD
+            raise "Invalid User"
         print "received heartbeat from", user.username
         dec_msg = self.msg_cryptographer.symmetric_decryption(msg, user.aes_key, self.keychain.private_key)
         dec_msg = tuple_from_string(dec_msg)
         rec_ts = long(dec_msg[1])
         rec_un = dec_msg[0]
         if rec_un == user.username and rec_ts <= get_time() :
-            #print "valid heartbeat"
             user.last_hearbeat_recv = rec_ts
             self.keychain.add_user(user)
         else:
-            print EM.INVALID_HEARTBEAT
+            raise "Invalid Hearbeat"
 
 def run():
     try:
         server = ChatServer()
-        udp.start_udp(server, '', 9090, 5)
+        udp.start_udp(server, '127.0.0.1', 9090, 5)
         print "Server Running!!"
         server.check_heartbeat_thread.join()
-    except (socket.error,Exception) as e:
+    except (socket.error, Exception) as e:
         print str(e)
-
 
 if __name__ == "__main__":
     run()

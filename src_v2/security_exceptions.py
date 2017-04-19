@@ -1,11 +1,8 @@
 import sys,os
-
-
 class SecurityException(Exception):
     def __init__(self,exception_msg):
         super(SecurityException,self).__init__(exception_msg)
         self.exception_msg=exception_msg
-
 
 def do_stuff():
     try:

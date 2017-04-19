@@ -11,10 +11,12 @@ from cryptography.hazmat.primitives.ciphers import modes
 import constants as CN
 
 
+# Required cryptographic methods for an application
 class Cryptographer:
     def __init__(self):
         self.backend = default_backend()
 
+    # Create a pair of RSA keys for the initiation of a client
     def create_rsa_pair(self):
         # try:
         private_key = rsa.generate_private_key(public_exponent=CN.RSA_PUBLIC_EXPONENT,
@@ -25,18 +27,20 @@ class Cryptographer:
         # except UnsupportedAlgorithm:
         #     print CN.exception_messages.get('UnsupportedAlgorithm')
 
-
+    # Server loading its private key
     def load_private_key(self, private_key_der):
         private_key = serialization.load_der_private_key(private_key_der.read(),
                                                          password=None,
                                                          backend=self.backend)
         return private_key
 
+    # Server and client loading the public key of the server
     def load_public_key(self, public_key_der):
         public_key = serialization.load_der_public_key(public_key_der.read(),
                                                         backend=self.backend)
         return public_key
 
+    # Converting the hash in to a password
     def compute_hash_from_client_password(self, username, password):
         hasher = hashes.Hash(hashes.SHA512(), self.backend)
         hasher.update(username)
@@ -49,6 +53,7 @@ class Cryptographer:
         password_hash = kdf.derive(password)
         return password_hash
 
+    # Computing the hash of the message
     def compute_hash(self, message):
         hasher = hashes.Hash(hashes.SHA512(), self.backend)
         salt = hasher.finalize()
@@ -60,6 +65,7 @@ class Cryptographer:
         message_hash = kdf.derive(message)
         return message_hash
 
+    # Sign the message for Integrity protection
     def sign_message(self, private_key, message):
         signer = private_key.signer(
             padding.PSS(
@@ -71,6 +77,7 @@ class Cryptographer:
         signature = signer.finalize()
         return signature
 
+    # Verify the signature of the message
     def verify_message(self, public_key, message, signature):
         try:
             verifier = public_key.verifier(
@@ -82,38 +89,43 @@ class Cryptographer:
             verifier.update(message)
             verifier.verify()
         except:
-            print "dsfdfgdg"
+            print "Signature not verified"
 
+    # Encrypt the message using the public key of the destination
     def rsa_encryption(self,public_key,message):
         ciphertext = public_key.encrypt(message,padding.OAEP(mgf = padding.MGF1(algorithm=hashes.SHA256()),
                                                              algorithm = hashes.SHA256(),label = None))
         return ciphertext
 
+    # Decrypt the message using the private key of the receiver
     def rsa_decryption(self,private_key,ciphertext):
         plaintext = private_key.decrypt(ciphertext,padding.OAEP(mgf = padding.MGF1(algorithm=hashes.SHA256()),
                                                                 algorithm = hashes.SHA256(),label = None))
         return plaintext
 
+    # generate diffie hellman keys
     def get_dh_pair(self):
         private_key = ec.generate_private_key(ec.SECP256R1(), default_backend())
         public_key = private_key.public_key()
         return private_key, public_key
 
     # get symmetric key from DH
-
     def get_symmetric_key(self, peer_public_key, private_key):
         return private_key.exchange(ec.ECDH(), peer_public_key)
 
+    # Convert public key to Bytes for transmission over network as a byte string
     def public_key_to_bytes(self, public_key):
         return bytes(public_key.public_bytes(encoding=serialization.Encoding.DER,
                                              format=serialization.PublicFormat.SubjectPublicKeyInfo))
 
+    # Convert Bytes to public key for receiving over network as a byte string
     def bytes_to_public_key(self, bytes):
         try:
             return serialization.load_der_public_key(bytes, backend=self.backend)
         except ValueError:
-            print "Invlaisliasi"
+            print "Invalid Signature"
 
+    # AES Symmetric encryption
     def symmetric_encryption(self, sym_key, iv, payload, ad):
         encryptor = ciphers.Cipher(algorithms.AES(sym_key), mode=modes.GCM(iv),
                                    backend=self.backend).encryptor()
@@ -121,6 +133,7 @@ class Cryptographer:
         ciphertext = encryptor.update(payload) + encryptor.finalize()
         return encryptor.tag, ciphertext
 
+    # AES Symmetric encryption
     def symmetric_decryption(self, sym_key, iv, payload, tag, ad):
         decryptor = ciphers.Cipher(algorithms.AES(sym_key),mode= modes.GCM(iv, tag),
                                 backend=self.backend).decryptor()

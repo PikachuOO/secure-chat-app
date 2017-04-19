@@ -1,5 +1,5 @@
-INVALID_USERNAME_PWD="Incorrect username/password. Re-enter again."
-USER_NOT_FOUND="Incorrect username/password"
+INVALID_USERNAME="Incorrect username. Re-enter again."
+INVALID_PASSWORD="Incorrect password. Re-enter password"
 UNEXPECTED_MSG_TYPE="Invalid message received."
 INVALID_SIGNATURE="Signature verification failed"
 SOCKET_TIMED_OUT="Socket timed out, try again later."
@@ -10,12 +10,6 @@ INCOMPLETE_SEND="Incomplete send request. Username and message required \n e.g s
 INCORRECT_COMMAND="Command not correct"
 REV_MSG_ERROR="Error occurred in UDP.py receive_message."
 INVALID_ARGUMENT='Run as: python ChatClient.py -p <port-number>'
-INVALID_HEARTBEAT='Invalid Hearbeat.'
-INVALID_LOGOUT='Invalid logout request.'
-INVALID_LIST_RQ='Invalid list request.'
-NONCE_MISMATCH='Possible replay of packets. Nonce did not match'
-INVALID_MSG_TYPE='Invalid message typr.'
-DECRYPTION_ERROR='Error in decryption.'
-QUIT_APP='Client logging out.'
-INCORRECT_SEND_COMMAND='Incorrect send command e.g  send <username> <message>'
+
+
 
